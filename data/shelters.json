@@ -53,22 +53,9 @@
   },
   {
     "kind": "shelter",
-    "status": "pending",
-    "name": "Associació Animalista Els Poets",
-    "address": "Pedreguer (dirección del refugio por confirmar)",
-    "locality": "Pedreguer",
-    "phone": "633 76 28 94",
-    "email": "elspoets@gmail.com",
-    "website": "https://elspoets.org/",
-    "acceptsDropOff": null,
-    "source": "https://elspoets.org/",
-    "reviewNote": "Pendiente: su web no publica la dirección del refugio. Confirmarla antes de aprobar."
-  },
-  {
-    "kind": "shelter",
     "status": "approved",
     "name": "APROP – Protectora de Animales de Pego",
-    "address": "Partida Burjo 3, 03780 Pego",
+    "address": "Partida Burjo, 3, 03780 Pego, Alicante",
     "locality": "Pego",
     "phone": "611 08 50 24",
     "email": "apropego@gmail.com",
