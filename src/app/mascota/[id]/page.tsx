@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { MapView } from "@/components/map/map-view";
@@ -48,6 +49,8 @@ async function PostDetailView({ id }: { id: string }) {
   if (!detail) notFound();
   const { post, sightings } = detail;
   const headline = postHeadline(post);
+  // Los tiempos relativos dependen de la hora actual: siempre en el momento de la petición.
+  await connection();
   const now = new Date();
 
   return (

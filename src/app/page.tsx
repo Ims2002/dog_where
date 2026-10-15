@@ -1,4 +1,5 @@
 import Form from "next/form";
+import { connection } from "next/server";
 import { Suspense } from "react";
 
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
@@ -121,6 +122,8 @@ async function Results({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
     custody: filters.custody,
     near: filters.near,
   });
+  // "hace 3 horas" depende de la hora actual: se calcula siempre en el momento de la petición.
+  await connection();
   const now = new Date();
 
   if (items.length === 0) {

@@ -28,7 +28,10 @@ type Props = {
 
 export function ShelterCard({ shelter, distanceKm, compact, headingLevel = "h2" }: Props) {
   const Heading = headingLevel;
-  const directions = `https://www.google.com/maps/dir/?api=1&destination=${shelter.location.lat},${shelter.location.lng}`;
+  // Por dirección y no por coordenadas: Google localiza mejor las "Partida …" que nuestro geocodificador.
+  const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+    `${shelter.name}, ${shelter.address}`,
+  )}`;
 
   return (
     <div className="flex flex-col gap-2">
