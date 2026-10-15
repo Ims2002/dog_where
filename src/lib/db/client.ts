@@ -1,31 +1,22 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
-import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
+import { attachDatabasePool } from "@vercel/functions";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import { pgConfigFromUrl } from "./connection";
 import * as schema from "./schema";
 
-export type Db = ReturnType<typeof drizzleNeon<typeof schema>>;
-
-/** true si la URL apunta a Neon (producción / previews). */
-export function isNeonUrl(url: string) {
-  return new URL(url).hostname.endsWith(".neon.tech");
-}
-
 /**
- * Crea el cliente de Drizzle.
- * - Neon → driver HTTP serverless (sin conexiones persistentes, ideal en Vercel).
- * - Cualquier otro Postgres (Docker en local, CI) → driver `pg`.
+ * Crea el cliente de Drizzle sobre `pg`.
  *
- * Ambos se exponen con el mismo tipo. Por eso el código de la app usa solo la API
- * común: nada de `db.transaction()` ni `db.batch()` (ver docs/GUIDELINES.md § 6).
+ * En Vercel se conecta al pooler de Supabase en modo transacción (POSTGRES_URL,
+ * puerto 6543), que reparte pocas conexiones reales entre muchas funciones.
+ * El pool de cada función es pequeño y `attachDatabasePool` cierra las conexiones
+ * ociosas antes de que Vercel congele la instancia.
  */
-export function createDbClient(url: string): Db {
-  if (isNeonUrl(url)) {
-    return drizzleNeon({ client: neon(url), schema });
-  }
-  return drizzlePg({
-    client: new Pool({ connectionString: url, max: 5 }),
-    schema,
-  }) as unknown as Db;
+export function createDbClient(url: string) {
+  const pool = new Pool({ ...pgConfigFromUrl(url), max: 5, idleTimeoutMillis: 5_000 });
+  if (process.env.VERCEL) attachDatabasePool(pool);
+  return drizzle({ client: pool, schema });
 }
+
+export type Db = ReturnType<typeof createDbClient>;

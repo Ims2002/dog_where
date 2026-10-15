@@ -38,8 +38,8 @@ async function geocode(query: string): Promise<Coords | null> {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("Falta DATABASE_URL (¿has hecho `vercel env pull .env.local`?)");
+  const url = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  if (!url) throw new Error("Falta POSTGRES_URL (¿has hecho `vercel env pull .env.local`?)");
   const db = createDbClient(url);
 
   const raw = JSON.parse(await readFile(process.argv[2] ?? "data/shelters.json", "utf8")) as Record<

@@ -9,7 +9,7 @@ Todo el servicio vive en Vercel: la app Next.js se despliega como funciones serv
   Navegador     │                                                                        │
   (móvil)  ───► │  Next.js 16 App Router                                                 │
      │          │  ├─ Server Components  (listado, detalle, mapa de protectoras)         │
-     │          │  ├─ Server Actions     (publicar, cambiar custodia, avistamiento,      │──► Neon Postgres
+     │          │  ├─ Server Actions     (publicar, cambiar custodia, avistamiento,      │──► Supabase Postgres
      │          │  │                      marcar reunido, denunciar)                     │    (aws-eu-central-1)
      │          │  └─ Route Handlers     (/api/health, /api/cron/expire)                 │
      │          └────────────────────────────────────────────────────────────────────────┘
@@ -106,38 +106,40 @@ Restricciones `CHECK` en `posts`:
 - `custody = 'at_shelter'` ⇔ `shelter_id IS NOT NULL`
 - `custody_lat/lng` solo pueden tener valor (ambos) si `custody = 'with_finder'`
 
-Índices: `posts(status, created_at)` para el listado, `posts(found_lat, found_lng)` y `shelters(lat, lng)` para filtrar por _bounding box_, `sightings(post_id, seen_at)` para el reguero. A escala local una caja de coordenadas + Haversine (`distanceKm`) es suficiente; si crece, se activa **PostGIS** en Neon y se migra a `geography(Point)` con índice GiST.
+Índices: `posts(status, created_at)` para el listado, `posts(found_lat, found_lng)` y `shelters(lat, lng)` para filtrar por _bounding box_, `sightings(post_id, seen_at)` para el reguero. A escala local una caja de coordenadas + Haversine (`distanceKm`) es suficiente; si crece, se activa **PostGIS** en Supabase y se migra a `geography(Point)` con índice GiST.
 
 ## Decisiones (ADR resumido)
 
 | #   | Decisión                                                | Alternativas consideradas             | Motivo                                                                                                                                                                           |
 | --- | ------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Next.js 16 en Vercel**                                | SPA + API separada; Astro             | Un solo despliegue, previews por PR, Server Actions eliminan la capa de API.                                                                                                     |
-| 2   | **Neon Postgres vía Marketplace**                       | Supabase; Vercel KV/Redis             | Integración nativa en Vercel (variables inyectadas, ramas de BD por preview). Relacional + PostGIS si hace falta. Supabase duplicaría auth/storage.                              |
-| 3   | **Drizzle ORM**                                         | Prisma                                | Ligero, sin motor binario, funciona sobre el driver HTTP de Neon en serverless, SQL explícito en las migraciones.                                                                |
+| 2   | **Supabase (solo su Postgres) vía Marketplace**         | Neon; PocketBase                      | Ya conocido, panel cómodo para ver y editar datos, integración con Vercel que inyecta las variables. PocketBase necesita un servidor siempre encendido y no encaja en Vercel.    |
+| 3   | **Drizzle ORM + `pg`** (sin el SDK de Supabase)         | Prisma; supabase-js                   | Ligero, sin motor binario, SQL explícito en las migraciones y tipos desde el esquema. Toda la lógica en el servidor; no dependemos de la API REST de Supabase.                   |
 | 4   | **Vercel Blob** para fotos, subidas con Server Action   | Cloudinary; client uploads con token  | Nativo de Vercel y con CDN. Al comprimir antes en el navegador la foto pesa poco, así que pasa por el servidor y toda la validación queda en un sitio.                           |
 | 5   | **Sin cuentas en el MVP**; Better Auth en fase 2        | Auth.js v5 (sigue en beta); Clerk     | Publicar y avisar de un avistamiento sin registro maximiza la participación. Better Auth es estable, se integra con Drizzle y no tiene coste por usuario.                        |
 | 6   | **Leaflet + OpenStreetMap**, manejado sin react-leaflet | Google Maps; Mapbox; react-leaflet    | Sin API key ni facturación. react-leaflet fallaba al reactivar rutas ocultas por `<Activity>`; un componente imperativo que crea y destruye su propio contenedor es más robusto. |
-| 7   | **Fuente Geist autoalojada** (paquete `geist`)          | `next/font/google`                    | El build no depende de la red a Google Fonts.                                                                                                                                    |
-| 8   | **Región fra1 + Neon Frankfurt**                        | iad1 (por defecto)                    | Usuarios en España; función y BD en la misma región.                                                                                                                             |
+| 7   | **Fuente Archivo autoalojada** (`next/font/local`)      | `next/font/google`                    | El build no depende de la red a Google Fonts. Su eje de anchura da los titulares estrechos de cartel.                                                                            |
+| 8   | **Región fra1 + Supabase Frankfurt**                    | iad1 (por defecto)                    | Usuarios en España; función y BD en la misma región.                                                                                                                             |
 | 9   | **Custodia como campo + `CHECK`**, no tabla aparte      | Tabla `custody_events` con histórico  | Solo importa el estado actual; el histórico de movimiento ya lo da el reguero. Si se necesita auditoría, se añade una tabla de eventos sin romper el modelo.                     |
 | 10  | **Protectoras curadas** (`pending → approved`)          | Que cualquiera cree puntos de entrega | Un punto de entrega falso podría usarse para robar animales. Solo se ofrecen lugares verificados.                                                                                |
 | 11  | **Avistamientos abiertos a cualquiera**, sin cuenta     | Solo el autor de la publicación       | El valor del reguero depende de que lo alimente el vecindario. Se compensa con límites por publicación y rate limiting.                                                          |
 | 12  | **Casa de quien acoge: solo la zona en público**        | Mostrar la ubicación exacta           | Es el domicilio de un particular. La zona (~1 km) basta para que el dueño sepa que es cerca; la dirección se da por contacto directo.                                            |
-
-| 13 | **Driver `pg` fuera de Neon** | Solo Neon (también en local) | Permite desarrollar con un Postgres en Docker y que la CI construya contra un Postgres de servicio. Coste: no usar transacciones interactivas. |
-| 14 | **Enlace secreto de gestión** en el MVP | Cuentas desde el principio | Publicar sin registro. El token solo se muestra una vez y en la BD se guarda su hash. |
+| 13  | **RLS activado sin políticas** en todas las tablas      | Desactivar la API REST de Supabase    | La clave _publishable_ es pública y la API REST expone el esquema `public`. Con RLS sin políticas no ve nada; la app es propietaria de las tablas y no le afecta.                |
+| 14  | **Enlace secreto de gestión** en el MVP                 | Cuentas desde el principio            | Publicar sin registro. El token solo se muestra una vez y en la BD se guarda su hash.                                                                                            |
 
 ## Variables de entorno
 
-| Variable                                        | Dónde              | Origen                             |
-| ----------------------------------------------- | ------------------ | ---------------------------------- |
-| `DATABASE_URL`                                  | Servidor           | Integración Neon                   |
-| `BLOB_READ_WRITE_TOKEN`                         | Servidor           | Integración Vercel Blob            |
-| `NEXT_PUBLIC_SITE_URL`                          | Cliente + servidor | Manual                             |
-| `CRON_SECRET`                                   | Servidor           | Manual (obligatoria en producción) |
-| `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET` | Servidor           | Manual (fase 2)                    |
+| Variable                                        | Dónde              | Origen                                              |
+| ----------------------------------------------- | ------------------ | --------------------------------------------------- |
+| `POSTGRES_URL`                                  | Servidor           | Integración Supabase (pooler, transacción)          |
+| `POSTGRES_URL_NON_POOLING`                      | Migraciones        | Integración Supabase                                |
+| `DATABASE_CA_CERT`                              | Servidor           | Manual (recomendada): CA de Supabase                |
+| `DATABASE_URL`                                  | Local / CI         | Alternativa a `POSTGRES_URL` con un Postgres propio |
+| `BLOB_READ_WRITE_TOKEN`                         | Servidor           | Integración Vercel Blob                             |
+| `NEXT_PUBLIC_SITE_URL`                          | Cliente + servidor | Manual                                              |
+| `CRON_SECRET`                                   | Servidor           | Manual (obligatoria en producción)                  |
+| `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET` | Servidor           | Manual (fase 2)                                     |
 
 ## Coste estimado
 
-Con tráfico local, todo encaja en los niveles gratuitos de Vercel (Hobby), Neon y Vercel Blob. Lo primero que crecería es el almacenamiento de fotos (ahora también las de avistamientos): la compresión a WebP ≤ 1600 px en cliente y el borrado al caducar lo mantienen acotado.
+Con tráfico local, todo encaja en los niveles gratuitos de Vercel (Hobby), Supabase y Vercel Blob. Lo primero que crecería es el almacenamiento de fotos (ahora también las de avistamientos): la compresión a WebP ≤ 1600 px en cliente y el borrado al caducar lo mantienen acotado.

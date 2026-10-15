@@ -6,7 +6,8 @@ import { z } from "zod";
  * (p. ej. prerenderizar /protectoras solo necesita la BD).
  */
 function read<T>(name: string, schema: z.ZodType<T>): T {
-  const parsed = schema.safeParse(process.env[name]);
+  // Una variable vacía (p. ej. copiada de .env.example) cuenta como no definida.
+  const parsed = schema.safeParse(process.env[name] || undefined);
   if (!parsed.success) {
     throw new Error(`Variable de entorno ${name} inválida o ausente`);
   }
@@ -16,8 +17,12 @@ function read<T>(name: string, schema: z.ZodType<T>): T {
 const isProduction = () => process.env.NODE_ENV === "production";
 
 export const env = {
-  /** Postgres (Neon en Vercel; cualquier Postgres en local/CI). */
-  databaseUrl: () => read("DATABASE_URL", z.url()),
+  /**
+   * Postgres. En Vercel, la integración de Supabase crea POSTGRES_URL (pooler en modo
+   * transacción). DATABASE_URL sirve como alternativa (Postgres local, CI).
+   */
+  databaseUrl: () =>
+    process.env.POSTGRES_URL ? read("POSTGRES_URL", z.url()) : read("DATABASE_URL", z.url()),
   /** Vercel Blob. En desarrollo es opcional: sin token, las fotos van a public/dev-uploads. */
   blobToken: () =>
     read(

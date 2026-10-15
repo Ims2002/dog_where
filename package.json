@@ -21,9 +21,9 @@
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
-    "@neondatabase/serverless": "^1.2.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.1",
+    "@vercel/functions": "^3.10.1",
     "drizzle-orm": "^0.45.4",
     "leaflet": "^1.9.4",
     "next": "16.4.0",

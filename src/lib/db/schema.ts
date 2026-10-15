@@ -26,6 +26,12 @@ export const reportReason = pgEnum("report_reason", REPORT_REASONS);
 export const shelterKind = pgEnum("shelter_kind", SHELTER_KINDS);
 export const shelterStatus = pgEnum("shelter_status", SHELTER_STATUSES);
 
+/*
+ * Todas las tablas tienen RLS activado y SIN políticas: la API pública de Supabase
+ * (PostgREST, con la clave publishable) no puede leer ni escribir nada. La app se
+ * conecta como propietaria de las tablas, que no está sujeta a RLS.
+ */
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -64,7 +70,7 @@ export const shelters = pgTable(
     index("shelters_status_idx").on(t.status),
     index("shelters_lat_lng_idx").on(t.lat, t.lng),
   ],
-);
+).enableRLS();
 
 /**
  * Publicación de un animal encontrado.
@@ -121,7 +127,7 @@ export const posts = pgTable(
       sql`(${t.custodyLat} IS NULL AND ${t.custodyLng} IS NULL) OR (${t.custody} = 'with_finder' AND ${t.custodyLat} IS NOT NULL AND ${t.custodyLng} IS NOT NULL)`,
     ),
   ],
-);
+).enableRLS();
 
 /**
  * Reguero de avistamientos de un animal que no se ha podido atrapar.
@@ -144,7 +150,7 @@ export const sightings = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("sightings_post_seen_idx").on(t.postId, t.seenAt)],
-);
+).enableRLS();
 
 /** Denuncias de usuarios para moderación. */
 export const reports = pgTable("reports", {
@@ -155,7 +161,7 @@ export const reports = pgTable("reports", {
   reason: reportReason("reason").notNull(),
   details: text("details"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}).enableRLS();
 
 export type Shelter = typeof shelters.$inferSelect;
 export type NewShelter = typeof shelters.$inferInsert;

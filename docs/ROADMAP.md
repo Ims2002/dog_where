@@ -3,11 +3,11 @@
 ## Fase 0 — Setup ✅
 
 - [x] Scaffold Next.js 16 + TypeScript + Tailwind v4
-- [x] Drizzle + Neon: esquema `posts` (con custodia), `shelters`, `sightings`, `reports` y migración inicial
+- [x] Drizzle + Postgres: esquema `posts` (con custodia), `shelters`, `sightings`, `reports` y migración inicial
 - [x] Validación (publicación, cambio de custodia, avistamiento, alta de protectora) y utilidades de privacidad con tests
 - [x] Guía de desarrollo, arquitectura, CI en GitHub Actions
 - [ ] Crear repo en GitHub y conectar a Vercel
-- [ ] Añadir Neon y Blob desde Vercel Storage; `vercel env pull`; `npm run db:migrate`
+- [ ] Añadir Supabase y Blob desde Vercel Storage; `vercel env pull`; `npm run db:migrate`
 - [ ] `/api/health` en verde en producción
 
 ## Fase 1 — MVP ✅ (código)
@@ -17,7 +17,7 @@
 - [x] Componentes UI base (`Button`, `Field`, `Input`, `Select`, `CustodyBadge`) y dirección visual "cartel de farola"
 - [x] Mapa (Leaflet + OSM): selector de ubicación, marcadores, zonas y polilínea
 - [x] Foto: compresión en el navegador (sin EXIF) + Server Action `uploadPhoto`
-- [x] BD con dos drivers (Neon en Vercel, `pg` en local/CI)
+- [x] BD en Supabase vía `pg` (pooler, SSL) con RLS activado en todas las tablas
 
 **Protectoras**
 
@@ -52,7 +52,7 @@
 
 ## Antes del lanzamiento
 
-- [ ] Conectar el repo a Vercel, añadir Neon y Blob, `CRON_SECRET` y `NEXT_PUBLIC_SITE_URL`
+- [ ] Conectar el repo a Vercel, añadir Supabase y Blob, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL` y `DATABASE_CA_CERT`
 - [ ] `npm run db:migrate` y `npm run db:seed:shelters` contra producción
 - [ ] Revisar en el mapa la ubicación de cada protectora (las "Partida …" pueden geocodificar de forma aproximada)
 - [ ] Llamar a cada protectora para confirmar si acepta animales encontrados (`acceptsDropOff`) y cómo
@@ -62,7 +62,7 @@
 
 ## Fase 2 — Comunidad y anti-abuso
 
-- [ ] Cuentas con Better Auth (Google + enlace mágico por email)
+- [ ] Cuentas (Google + enlace mágico por email): Supabase Auth o Better Auth, a decidir
 - [ ] Rate limiting (Upstash Redis) + honeypot en publicaciones, avistamientos y denuncias
 - [ ] Formulario público de solicitud de alta de protectoras + panel de moderación
 - [ ] Alertas por zona (email) cuando se publica un animal cerca o hay un avistamiento nuevo en un reguero que sigues
@@ -72,6 +72,6 @@
 
 - [ ] Panel para protectoras: ver y gestionar los animales que se les han dejado
 - [ ] Publicaciones de "se busca" por parte de dueños
-- [ ] **Matching por similitud de imagen** entre "se busca" y "encontrado" (embeddings de imagen + `pgvector` en Neon)
+- [ ] **Matching por similitud de imagen** entre "se busca" y "encontrado" (embeddings de imagen + `pgvector` en Supabase)
 - [ ] Predicción de la zona probable del animal a partir del reguero (dirección y velocidad de los avistamientos)
 - [ ] PWA instalable con notificaciones push

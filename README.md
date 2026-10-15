@@ -2,16 +2,16 @@
 
 Publica la foto de un animal que has encontrado o visto suelto —con los datos de su chapa si la lleva— para que su familia pueda encontrarlo.
 
-**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Neon Postgres + Drizzle · Vercel Blob · Vercel
+**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Supabase (Postgres) + Drizzle · Vercel Blob · Vercel
 
 ## Puesta en marcha
 
-Requisitos: Node.js 22+ y npm. Para la base de datos vale Neon (vía Vercel) o un Postgres local en Docker (ver [GUIDELINES.md § 6](docs/GUIDELINES.md#6-base-de-datos)).
+Requisitos: Node.js 22+ y npm. Base de datos: un proyecto de Supabase (o, opcionalmente, cualquier Postgres local; ver [GUIDELINES.md § 6](docs/GUIDELINES.md#6-base-de-datos)).
 
 ```bash
 npm install
 cp .env.example .env.local      # o: npx vercel link && npx vercel env pull .env.local
-npm run db:migrate              # necesita DATABASE_URL
+npm run db:migrate              # necesita POSTGRES_URL_NON_POOLING (o DATABASE_URL)
 npm run db:seed:shelters        # carga las protectoras de data/shelters.json
 npm run dev
 ```

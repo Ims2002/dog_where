@@ -27,7 +27,7 @@ Principios de producto (deciden los empates):
 1. **Publicar en menos de un minuto, desde el móvil.** Quien encuentra un perro lo tiene delante y una mano ocupada. Cada campo extra del formulario tiene que justificarse.
 2. **Privacidad primero.** Manejamos teléfonos de terceros (el dueño, vía chapa) y ubicaciones. Ante la duda, se muestra menos (ver §8).
 3. **Local.** El valor está en la cercanía: listados y búsquedas siempre ordenados por zona y fecha.
-4. **Barato de operar.** Todo cabe en los planes gratuitos de Vercel + Neon + Vercel Blob mientras el tráfico sea local.
+4. **Barato de operar.** Todo cabe en los planes gratuitos de Vercel + Supabase + Vercel Blob mientras el tráfico sea local.
 
 Fuera de alcance del MVP: chat interno, pagos, app nativa, publicaciones de "se busca" por parte de dueños (está en el roadmap), panel propio para protectoras (en el MVP las da de alta un administrador).
 
@@ -35,18 +35,18 @@ Fuera de alcance del MVP: chat interno, pagos, app nativa, publicaciones de "se 
 
 ## 2. Stack
 
-| Capa          | Elección                                      | Notas                                                                   |
-| ------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
-| Framework     | **Next.js 16** (App Router, Cache Components) | Server Components por defecto. Turbopack.                               |
-| Lenguaje      | **TypeScript** `strict`                       | Prohibido `any` explícito; usa `unknown` y estrecha.                    |
-| Estilos       | **Tailwind CSS v4**                           | Tokens en `src/app/globals.css` (`@theme`).                             |
-| Base de datos | **Postgres en Neon** (vía Vercel Marketplace) | Cliente HTTP serverless `@neondatabase/serverless`.                     |
-| ORM           | **Drizzle ORM** + drizzle-kit                 | Esquema en `src/lib/db/schema.ts`, migraciones en `drizzle/`.           |
-| Ficheros      | **Vercel Blob**                               | Se comprime en el cliente y se sube con la Server Action `uploadPhoto`. |
-| Validación    | **Zod 4**                                     | Mismo esquema en cliente (UX) y servidor (seguridad).                   |
-| Tests         | **Vitest**                                    | Playwright para e2e en fase 2.                                          |
-| Calidad       | ESLint (config de Next) + Prettier            | `npm run check` lo ejecuta todo.                                        |
-| Hosting       | **Vercel**, región `fra1`                     | Misma región que Neon (`aws-eu-central-1`) para minimizar latencia.     |
+| Capa          | Elección                                          | Notas                                                                      |
+| ------------- | ------------------------------------------------- | -------------------------------------------------------------------------- |
+| Framework     | **Next.js 16** (App Router, Cache Components)     | Server Components por defecto. Turbopack.                                  |
+| Lenguaje      | **TypeScript** `strict`                           | Prohibido `any` explícito; usa `unknown` y estrecha.                       |
+| Estilos       | **Tailwind CSS v4**                               | Tokens en `src/app/globals.css` (`@theme`).                                |
+| Base de datos | **Postgres en Supabase** (vía Vercel Marketplace) | Driver `pg` contra el pooler de Supabase (modo transacción). RLS activado. |
+| ORM           | **Drizzle ORM** + drizzle-kit                     | Esquema en `src/lib/db/schema.ts`, migraciones en `drizzle/`.              |
+| Ficheros      | **Vercel Blob**                                   | Se comprime en el cliente y se sube con la Server Action `uploadPhoto`.    |
+| Validación    | **Zod 4**                                         | Mismo esquema en cliente (UX) y servidor (seguridad).                      |
+| Tests         | **Vitest**                                        | Playwright para e2e en fase 2.                                             |
+| Calidad       | ESLint (config de Next) + Prettier                | `npm run check` lo ejecuta todo.                                           |
+| Hosting       | **Vercel**, región `fra1`                         | Misma región que el proyecto de Supabase (Frankfurt, `eu-central-1`).      |
 
 Mapas con **Leaflet + OpenStreetMap** (`src/components/map`). Auth (Better Auth) y rate limiting (Upstash) se añaden en la fase 2; la justificación está en ARCHITECTURE.md.
 
@@ -180,15 +180,17 @@ Las excepciones se reservan para lo inesperado (BD caída), que acaba en `error.
 - **Migraciones:**
   1. Cambia `schema.ts`.
   2. `npm run db:generate -- --name <descripcion>` → revisa el SQL generado en `drizzle/`.
-  3. `npm run db:migrate` contra tu rama de desarrollo de Neon.
+  3. `npm run db:migrate` contra tu proyecto de desarrollo de Supabase (o tu Postgres local).
   4. Commitea el SQL junto al cambio de esquema, en el mismo PR.
   5. Nunca `drizzle-kit push` contra producción. Nunca editar una migración ya aplicada en producción.
-- Usa ramas de Neon (database branching) para desarrollo y previews; producción no se toca a mano.
-- **Dos drivers, una API.** Con una URL de Neon se usa el driver HTTP serverless; con cualquier otro Postgres (Docker en local, CI) se usa `pg` (`src/lib/db/client.ts`). Por eso el código **no usa `db.transaction()` ni `db.batch()`**: si necesitas atomicidad, una sola sentencia (CTE) o restricciones en la BD.
-- Postgres local sin Neon:
+- **Supabase solo como Postgres.** La app no usa el SDK de Supabase ni su API REST: se conecta con `pg` + Drizzle (`src/lib/db/client.ts`). En Vercel usa `POSTGRES_URL` (pooler en modo transacción, puerto 6543); las migraciones usan `POSTGRES_URL_NON_POOLING`.
+- **RLS siempre activado, sin políticas.** Supabase publica las tablas del esquema `public` en una API REST accesible con la clave _publishable_, que es pública. Con RLS activo y sin políticas esa API no ve nada, mientras que la app (propietaria de las tablas) no está sujeta a RLS. **Toda tabla nueva lleva `.enableRLS()`.**
+- **SSL:** Supabase usa su propia CA. `pgConfigFromUrl` (`src/lib/db/connection.ts`) cifra siempre la conexión; para verificar además el certificado, pon en `DATABASE_CA_CERT` el certificado que descargas en Supabase → _Database Settings → SSL Configuration_.
+- Producción no se toca a mano: los cambios de esquema van siempre por migración.
+- Desarrollo: lo más sencillo es un segundo proyecto gratuito de Supabase (`dogwhere-dev`) con sus URLs en `.env.local`. Si prefieres trabajar sin conexión, vale cualquier Postgres local (opcional):
   ```bash
   docker run -d --name dogwhere-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
-  # .env.local → DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres
+  # .env.local → DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres (sin POSTGRES_URL)
   npm run db:migrate && npm run db:seed:shelters
   ```
 - Las lecturas cacheadas (`"use cache"`) llevan siempre `cacheTag` y `cacheLife`. Tras escribir, las Server Actions llaman a `updateTag` (el usuario ve su cambio al momento); el cron usa `revalidateTag(tag, "max")`.
@@ -264,7 +266,7 @@ Además:
 ## 11. Tests
 
 - `npm test` (Vitest) para lógica pura: validaciones, mappers de privacidad, utilidades geo/teléfono. **Las reglas de privacidad de §8 deben tener test.**
-- Lo que toca BD se prueba contra una rama de Neon, no con mocks del ORM.
+- Lo que toca BD se prueba contra Postgres de verdad (el de desarrollo o el de la CI), no con mocks del ORM.
 - E2E (fase 2, Playwright): los flujos críticos "publicar → aparece en el listado → marcar como reunido" y "publicar sin capturar → añadir avistamientos → pasar a protectora".
 - Antes de abrir un PR: `npm run check` (lint + typecheck + formato + tests).
 
@@ -275,8 +277,11 @@ Además:
 Configuración inicial (una sola vez):
 
 1. Subir el repo a GitHub e importarlo en Vercel (framework detectado: Next.js).
-2. En el proyecto de Vercel → **Storage**: añadir **Neon** (Postgres) y **Blob**. Ambos inyectan sus variables (`DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`) automáticamente.
-   - En Neon, elegir región `aws-eu-central-1` (Frankfurt) y activar ramas de BD para _preview deployments_.
+2. En el proyecto de Vercel → **Storage**: añadir **Supabase** y **Blob**.
+   - Supabase: crear el proyecto en la región **Frankfurt (eu-central-1)**. La integración añade `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, `SUPABASE_URL`, etc.
+   - Blob: añade `BLOB_READ_WRITE_TOKEN`.
+   - Recomendado: en Supabase → _Database Settings → SSL Configuration_, descargar el certificado y pegarlo en la variable `DATABASE_CA_CERT` de Vercel.
+   - Las previews usan por defecto la misma BD que producción. Para aislarlas, crea un segundo proyecto de Supabase y pon sus `POSTGRES_URL*` en el entorno _Preview_ de Vercel.
 3. Añadir en Environment Variables (Production y Preview): `NEXT_PUBLIC_SITE_URL` y `CRON_SECRET` (cadena aleatoria de 16+ caracteres; Vercel la envía al cron).
 4. En local: `npx vercel link` y `npx vercel env pull .env.local`.
 5. Aplicar migraciones: `npm run db:migrate`.
@@ -288,6 +293,8 @@ El cron diario de caducidad está declarado en `vercel.json` (4:00 UTC).
 Día a día: PR → preview automática → merge → producción automática. Las migraciones se aplican manualmente (paso 5) **antes** de fusionar un PR que las necesite.
 
 > Plan Hobby de Vercel = uso personal/no comercial. Si el proyecto se monetiza o se hace con una entidad, pasar a Pro.
+>
+> Supabase gratuito pausa los proyectos que pasan una semana sin actividad. El cron diario consulta la BD cada día, lo que debería mantenerlo activo; compruébalo en el panel de Supabase las primeras semanas.
 
 ---
 
