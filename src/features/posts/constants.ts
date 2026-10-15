@@ -13,9 +13,14 @@ export type CustodyStatus = (typeof CUSTODY_STATUSES)[number];
 export type Species = (typeof SPECIES)[number];
 export type PostStatus = (typeof POST_STATUSES)[number];
 
+/** Tags de caché (Cache Components). */
+export const POSTS_TAG = "posts";
+export const postTag = (id: string) => `post:${id}`;
+
 /** Días que una publicación permanece visible antes de archivarse. */
 export const POST_TTL_DAYS = 60;
-export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+/** Tras comprimir en el navegador suelen pesar < 500 KB. Debe caber en serverActions.bodySizeLimit. */
+export const MAX_PHOTO_BYTES = 3.5 * 1024 * 1024;
 export const ALLOWED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 /**

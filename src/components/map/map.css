@@ -1,0 +1,48 @@
+/* Colores de los puntos del mapa a partir de los tokens de globals.css. */
+.map-found {
+  stroke: var(--on-signal);
+  fill: var(--signal);
+  fill-opacity: 1;
+  stroke-width: 3;
+}
+.map-sighting {
+  stroke: var(--paper);
+  fill: var(--loose);
+  fill-opacity: 1;
+}
+.map-sighting-stale {
+  stroke: var(--paper);
+  fill: var(--loose);
+  fill-opacity: 0.35;
+}
+.map-latest {
+  stroke: var(--on-signal);
+  fill: var(--loose);
+  fill-opacity: 1;
+  stroke-width: 4;
+}
+.map-shelter {
+  stroke: var(--paper);
+  fill: var(--shelter);
+  fill-opacity: 1;
+  stroke-width: 3;
+}
+.map-pin {
+  stroke: var(--on-signal);
+  fill: var(--signal);
+  fill-opacity: 1;
+  stroke-width: 4;
+}
+.map-area {
+  stroke: var(--finder);
+  fill: var(--finder);
+  fill-opacity: 0.15;
+  stroke-dasharray: 6 6;
+}
+.map-path {
+  stroke: var(--loose);
+  stroke-width: 3;
+  stroke-dasharray: 2 8;
+  stroke-linecap: round;
+  fill: none;
+}

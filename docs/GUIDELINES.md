@@ -35,20 +35,20 @@ Fuera de alcance del MVP: chat interno, pagos, app nativa, publicaciones de "se 
 
 ## 2. Stack
 
-| Capa          | Elección                                      | Notas                                                               |
-| ------------- | --------------------------------------------- | ------------------------------------------------------------------- |
-| Framework     | **Next.js 16** (App Router, Cache Components) | Server Components por defecto. Turbopack.                           |
-| Lenguaje      | **TypeScript** `strict`                       | Prohibido `any` explícito; usa `unknown` y estrecha.                |
-| Estilos       | **Tailwind CSS v4**                           | Tokens en `src/app/globals.css` (`@theme`).                         |
-| Base de datos | **Postgres en Neon** (vía Vercel Marketplace) | Cliente HTTP serverless `@neondatabase/serverless`.                 |
-| ORM           | **Drizzle ORM** + drizzle-kit                 | Esquema en `src/lib/db/schema.ts`, migraciones en `drizzle/`.       |
-| Ficheros      | **Vercel Blob**                               | Subida directa desde el cliente (client uploads).                   |
-| Validación    | **Zod 4**                                     | Mismo esquema en cliente (UX) y servidor (seguridad).               |
-| Tests         | **Vitest**                                    | Playwright para e2e en fase 2.                                      |
-| Calidad       | ESLint (config de Next) + Prettier            | `npm run check` lo ejecuta todo.                                    |
-| Hosting       | **Vercel**, región `fra1`                     | Misma región que Neon (`aws-eu-central-1`) para minimizar latencia. |
+| Capa          | Elección                                      | Notas                                                                   |
+| ------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
+| Framework     | **Next.js 16** (App Router, Cache Components) | Server Components por defecto. Turbopack.                               |
+| Lenguaje      | **TypeScript** `strict`                       | Prohibido `any` explícito; usa `unknown` y estrecha.                    |
+| Estilos       | **Tailwind CSS v4**                           | Tokens en `src/app/globals.css` (`@theme`).                             |
+| Base de datos | **Postgres en Neon** (vía Vercel Marketplace) | Cliente HTTP serverless `@neondatabase/serverless`.                     |
+| ORM           | **Drizzle ORM** + drizzle-kit                 | Esquema en `src/lib/db/schema.ts`, migraciones en `drizzle/`.           |
+| Ficheros      | **Vercel Blob**                               | Se comprime en el cliente y se sube con la Server Action `uploadPhoto`. |
+| Validación    | **Zod 4**                                     | Mismo esquema en cliente (UX) y servidor (seguridad).                   |
+| Tests         | **Vitest**                                    | Playwright para e2e en fase 2.                                          |
+| Calidad       | ESLint (config de Next) + Prettier            | `npm run check` lo ejecuta todo.                                        |
+| Hosting       | **Vercel**, región `fra1`                     | Misma región que Neon (`aws-eu-central-1`) para minimizar latencia.     |
 
-Auth (Better Auth), mapas (Leaflet + OpenStreetMap) y rate limiting (Upstash) se añaden en sus fases; la justificación está en ARCHITECTURE.md.
+Mapas con **Leaflet + OpenStreetMap** (`src/components/map`). Auth (Better Auth) y rate limiting (Upstash) se añaden en la fase 2; la justificación está en ARCHITECTURE.md.
 
 > **Next.js 16 no es el Next.js "de siempre".** Antes de usar una API de Next, consulta la doc que viene en `node_modules/next/dist/docs/`. Especialmente: Cache Components (`"use cache"`, `cacheLife`, `cacheTag`) y `connection()`.
 
@@ -58,14 +58,18 @@ Auth (Better Auth), mapas (Leaflet + OpenStreetMap) y rate limiting (Upstash) se
 
 ```
 dog_where/
+├── data/                    # Datos de carga (shelters.json)
 ├── docs/                    # Guía, arquitectura, roadmap
 ├── drizzle/                 # Migraciones SQL generadas (se commitean)
-├── public/                  # Estáticos (iconos, og-image)
+├── public/                  # Estáticos (en desarrollo, también dev-uploads/, ignorado por git)
+├── scripts/                 # Scripts de mantenimiento (seed de protectoras)
 └── src/
     ├── app/                 # SOLO rutas: page, layout, loading, error, route handlers
-    │   └── api/health/      # GET /api/health
+    │   └── api/             # health, cron/expire
     ├── components/
-    │   └── ui/              # Primitivas genéricas (Button, Input, Card…) sin lógica de negocio
+    │   ├── map/             # Mapa (Leaflet), selector de ubicación
+    │   ├── ui/              # Primitivas genéricas (Button, Field, Badge…) sin lógica de negocio
+    │   └── photo-input.tsx  # Foto: comprimir en el navegador + subir
     ├── features/            # Un directorio por dominio
     │   ├── posts/           # Publicaciones y su custodia
     │   │   ├── constants.ts     # Enums, límites, precisión pública, etiquetas de UI
@@ -76,7 +80,7 @@ dog_where/
     │   │   └── components/      # Componentes propios del dominio
     │   ├── shelters/        # Protectoras, perreras y veterinarios (puntos de referencia)
     │   └── sightings/       # Reguero de avistamientos de animales sin capturar
-    └── lib/                 # Utilidades transversales (db, env, geo, phone, validation)
+    └── lib/                 # Transversal: db, env, storage, tokens, format, geo, phone, validation
 ```
 
 Reglas:
@@ -121,7 +125,7 @@ Reglas:
 ### React y Next.js
 
 - **Server Components por defecto.** `"use client"` solo en las hojas que lo necesitan (formularios, mapa, cámara) y lo más abajo posible del árbol.
-- **Mutaciones con Server Actions** (`features/*/actions.ts`). Los Route Handlers (`app/api/*`) se reservan para: health check, el endpoint de tokens de Vercel Blob, webhooks y cron.
+- **Mutaciones con Server Actions** (`features/*/actions.ts`). Los Route Handlers (`app/api/*`) se reservan para: health check, webhooks y cron.
 - **El acceso a BD vive solo en `queries.ts` y `actions.ts`**, que importan `server-only`. Ningún componente llama a `getDb()` directamente.
 - **Caching (Cache Components):** los datos son dinámicos por defecto.
   - Lecturas que pueden cachearse (listado público, detalle) → `"use cache"` + `cacheLife(...)` + `cacheTag("posts")`.
@@ -180,16 +184,25 @@ Las excepciones se reservan para lo inesperado (BD caída), que acaba en `error.
   4. Commitea el SQL junto al cambio de esquema, en el mismo PR.
   5. Nunca `drizzle-kit push` contra producción. Nunca editar una migración ya aplicada en producción.
 - Usa ramas de Neon (database branching) para desarrollo y previews; producción no se toca a mano.
+- **Dos drivers, una API.** Con una URL de Neon se usa el driver HTTP serverless; con cualquier otro Postgres (Docker en local, CI) se usa `pg` (`src/lib/db/client.ts`). Por eso el código **no usa `db.transaction()` ni `db.batch()`**: si necesitas atomicidad, una sola sentencia (CTE) o restricciones en la BD.
+- Postgres local sin Neon:
+  ```bash
+  docker run -d --name dogwhere-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
+  # .env.local → DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres
+  npm run db:migrate && npm run db:seed:shelters
+  ```
+- Las lecturas cacheadas (`"use cache"`) llevan siempre `cacheTag` y `cacheLife`. Tras escribir, las Server Actions llaman a `updateTag` (el usuario ve su cambio al momento); el cron usa `revalidateTag(tag, "max")`.
 
 ---
 
 ## 7. Fotos (Vercel Blob)
 
-- Tipos permitidos: JPEG, PNG, WebP. Máximo 5 MB (`MAX_PHOTO_BYTES`).
+- Tipos permitidos: JPEG, PNG, WebP. Máximo 3,5 MB tras comprimir (`MAX_PHOTO_BYTES`), por debajo del `bodySizeLimit` de 4 MB de las Server Actions.
 - **Antes de subir**, el cliente redimensiona (lado mayor ≤ 1600 px) y re-codifica a WebP con `<canvas>`. Esto reduce peso y **elimina los metadatos EXIF, incluida la ubicación GPS** de la foto.
-- La subida es directa del navegador a Blob (`@vercel/blob/client` + route handler que emite el token). El token restringe tipo y tamaño en servidor también.
-- El servidor solo acepta `photoUrl` de `*.public.blob.vercel-storage.com` (ya validado en `createPostSchema`).
-- Al borrar o caducar una publicación se borra también su blob (`photoPathname`).
+- La foto ya comprimida (unos cientos de KB) se envía a la Server Action `uploadPhoto`, que vuelve a comprobar tipo y tamaño y la guarda con `putPhoto` (`src/lib/storage.ts`). Así toda la validación ocurre en el servidor y no hace falta un endpoint de tokens.
+- En desarrollo, sin `BLOB_READ_WRITE_TOKEN`, las fotos se guardan en `public/dev-uploads/` para poder trabajar sin Vercel.
+- El servidor solo acepta `photoUrl` de `*.public.blob.vercel-storage.com` (o `/dev-uploads/` fuera de producción), validado en `blobUrlSchema`.
+- Al borrar o caducar una publicación se borran también su foto y las de sus avistamientos (`deletePhotos`, que nunca rompe la operación si Blob falla).
 
 ---
 
@@ -224,7 +237,9 @@ Además:
 ## 9. Seguridad
 
 - Secretos solo en variables de entorno de Vercel y en `.env.local` (ignorado por git). `.env.example` documenta todas las variables, sin valores.
-- Las variables de servidor se leen con `getServerEnv()` (validadas con Zod). Solo lo prefijado con `NEXT_PUBLIC_` llega al navegador.
+- Las variables de servidor se leen con `env.*()` de `src/lib/env.ts` (validadas con Zod al usarse). Solo lo prefijado con `NEXT_PUBLIC_` llega al navegador.
+- **Enlace de gestión:** al publicar se genera un token aleatorio; en la BD solo se guarda su SHA-256 y se compara en tiempo constante. La ruta `/gestionar/*` se sirve con `Referrer-Policy: no-referrer` y `noindex`.
+- El cron (`/api/cron/expire`) exige `Authorization: Bearer $CRON_SECRET`.
 - Toda entrada de usuario se valida en el servidor. Nada de `dangerouslySetInnerHTML` con contenido de usuario.
 - Cabeceras de seguridad definidas en `next.config.ts` (`nosniff`, `X-Frame-Options`, `Permissions-Policy` limitada a cámara y geolocalización).
 - Los avistamientos se pueden añadir sin cuenta, así que son lo más expuesto a spam: límite de `MAX_SIGHTINGS_PER_POST` por publicación desde el MVP, y solo se aceptan en publicaciones `active` con custodia `not_caught`.
@@ -262,10 +277,13 @@ Configuración inicial (una sola vez):
 1. Subir el repo a GitHub e importarlo en Vercel (framework detectado: Next.js).
 2. En el proyecto de Vercel → **Storage**: añadir **Neon** (Postgres) y **Blob**. Ambos inyectan sus variables (`DATABASE_URL`, `BLOB_READ_WRITE_TOKEN`) automáticamente.
    - En Neon, elegir región `aws-eu-central-1` (Frankfurt) y activar ramas de BD para _preview deployments_.
-3. Añadir `NEXT_PUBLIC_SITE_URL` en Environment Variables (Production y Preview).
+3. Añadir en Environment Variables (Production y Preview): `NEXT_PUBLIC_SITE_URL` y `CRON_SECRET` (cadena aleatoria de 16+ caracteres; Vercel la envía al cron).
 4. En local: `npx vercel link` y `npx vercel env pull .env.local`.
 5. Aplicar migraciones: `npm run db:migrate`.
-6. Comprobar `GET /api/health` → `{"status":"ok","db":"ok"}`.
+6. Cargar protectoras: `npm run db:seed:shelters` y revisar en el mapa los enlaces que imprime.
+7. Comprobar `GET /api/health` → `{"status":"ok","db":"ok"}`.
+
+El cron diario de caducidad está declarado en `vercel.json` (4:00 UTC).
 
 Día a día: PR → preview automática → merge → producción automática. Las migraciones se aplican manualmente (paso 5) **antes** de fusionar un PR que las necesite.
 

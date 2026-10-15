@@ -1,0 +1,23 @@
+/** Sugerencias de localidad (Marina Alta). El campo sigue siendo libre. */
+export const LOCALITIES = [
+  "Xàbia",
+  "Dénia",
+  "Benitachell",
+  "Teulada",
+  "Moraira",
+  "Benissa",
+  "Calp",
+  "Gata de Gorgos",
+  "Pedreguer",
+  "Ondara",
+  "El Verger",
+  "Els Poblets",
+  "Pego",
+  "Orba",
+  "Xaló",
+  "Alcalalí",
+  "Llíber",
+  "Senija",
+  "Beniarbeig",
+  "La Xara",
+] as const;

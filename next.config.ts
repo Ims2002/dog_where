@@ -19,12 +19,20 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  experimental: {
+    // Fotos ya comprimidas en el navegador (≤ MAX_PHOTO_BYTES). Vercel admite hasta 4,5 MB.
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   images: {
     // Las fotos solo pueden venir de nuestro store de Vercel Blob.
     remotePatterns: [{ protocol: "https", hostname: "*.public.blob.vercel-storage.com" }],
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // El enlace de gestión lleva un secreto en la ruta: que no salga en el Referer.
+      { source: "/gestionar/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+    ];
   },
 };
 

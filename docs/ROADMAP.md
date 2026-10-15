@@ -10,39 +10,55 @@
 - [ ] Añadir Neon y Blob desde Vercel Storage; `vercel env pull`; `npm run db:migrate`
 - [ ] `/api/health` en verde en producción
 
-## Fase 1 — MVP
+## Fase 1 — MVP ✅ (código)
 
 **Base**
 
-- [ ] Componentes UI base (`Button`, `Input`, `Select`, `Card`, `Badge`)
-- [ ] Componente de mapa (Leaflet + OSM): pin seleccionable, marcadores, polilínea
-- [ ] Subida de foto con compresión en cliente + `/api/blob/upload`
+- [x] Componentes UI base (`Button`, `Field`, `Input`, `Select`, `CustodyBadge`) y dirección visual "cartel de farola"
+- [x] Mapa (Leaflet + OSM): selector de ubicación, marcadores, zonas y polilínea
+- [x] Foto: compresión en el navegador (sin EXIF) + Server Action `uploadPhoto`
+- [x] BD con dos drivers (Neon en Vercel, `pg` en local/CI)
 
 **Protectoras**
 
-- [ ] Script/seed de alta de protectoras (`createShelterSchema`) con las de la zona
-- [ ] `/protectoras`: mapa y listado de las aprobadas
-- [ ] Query de protectoras cercanas (`NEARBY_SHELTERS_RADIUS_KM`)
+- [x] `data/shelters.json` con las 6 protectoras de la zona + `npm run db:seed:shelters` (geocodifica con Nominatim)
+- [x] `/protectoras`: mapa y listado de las aprobadas
+- [x] Al publicar, protectoras ordenadas por cercanía al lugar del hallazgo
 
 **Publicaciones**
 
-- [ ] `/publicar`: foto → animal y chapa → lugar del hallazgo → **¿dónde está ahora?** → contacto
-- [ ] Server Action `createPost` + enlace secreto de gestión
-- [ ] `/`: listado de publicaciones activas (recientes / cercanas), filtros por especie, custodia, radio y fecha
-- [ ] `/mascota/[id]`: detalle con lugar aproximado, custodia (zona / protectora / reguero) y contacto
-- [ ] Cambiar custodia y marcar como reunido desde el enlace de gestión
+- [x] `/publicar`: aviso de chapa/Policía Local → foto → animal y chapa → dónde y cuándo → ¿dónde está ahora? → contacto
+- [x] Server Action `createPost` + enlace secreto de gestión (token con hash)
+- [x] `/`: listado de activas, filtros por animal y custodia, "Cerca de mí" con radio
+- [x] `/mascota/[id]`: detalle con lugar aproximado, custodia (zona / protectora / reguero), contacto y compartir
+- [x] `/gestionar/[id]/[token]`: cambiar custodia, marcar como reunido, borrar
 
 **Reguero de avistamientos**
 
-- [ ] Botón "Lo he visto" en publicaciones `not_caught` + Server Action `createSighting`
-- [ ] Mapa del reguero con `buildTrail` (último punto destacado, antiguos atenuados)
-- [ ] Compartir el enlace del reguero (og-image con el último avistamiento) para difundir por WhatsApp
+- [x] "Lo he visto" en publicaciones `not_caught` + Server Action `createSighting`
+- [x] Mapa del reguero con `buildTrail` (último punto destacado, antiguos atenuados)
+- [x] Compartir por WhatsApp (Open Graph con la foto)
 
 **Operación y legal**
 
-- [ ] Denunciar publicación
-- [ ] Cron diario de caducidad (archivar + borrar datos privados y blobs)
-- [ ] Aviso legal, privacidad, cookies; Vercel Web Analytics
+- [x] Denunciar publicación
+- [x] Cron diario de caducidad (archivar + borrar datos privados, fotos y avistamientos)
+- [x] Borradores de aviso legal y privacidad; Vercel Web Analytics (sin cookies)
+
+**Pendiente de la Fase 1**
+
+- [ ] Filtro por fecha en el listado
+- [ ] og-image propia con el último avistamiento del reguero
+
+## Antes del lanzamiento
+
+- [ ] Conectar el repo a Vercel, añadir Neon y Blob, `CRON_SECRET` y `NEXT_PUBLIC_SITE_URL`
+- [ ] `npm run db:migrate` y `npm run db:seed:shelters` contra producción
+- [ ] Revisar en el mapa la ubicación de cada protectora (las "Partida …" pueden geocodificar de forma aproximada)
+- [ ] Llamar a cada protectora para confirmar si acepta animales encontrados (`acceptsDropOff`) y cómo
+- [ ] Els Poets: conseguir la dirección del refugio y aprobarla
+- [ ] Completar titular, NIF y contacto en Privacidad y Aviso legal y revisarlos
+- [ ] Probar el flujo completo desde un móvil real con la preview de Vercel
 
 ## Fase 2 — Comunidad y anti-abuso
 

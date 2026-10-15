@@ -64,6 +64,24 @@ export const createPostSchema = z
     path: ["hasTag"],
   });
 
+/**
+ * Valida una publicación mostrando TODOS los errores a la vez.
+ * Con una unión discriminada, si falta `custody` Zod solo informa de ese campo;
+ * aquí se añaden también los errores del resto del formulario.
+ */
+export function validateCreatePost(input: unknown) {
+  const result = createPostSchema.safeParse(input);
+  if (result.success) return result;
+  const base = basePost.safeParse(input);
+  if (!base.success) {
+    const seen = new Set(result.error.issues.map((i) => i.path.join(".")));
+    for (const issue of base.error.issues) {
+      if (!seen.has(issue.path.join("."))) result.error.issues.push(issue);
+    }
+  }
+  return result;
+}
+
 export type CreatePostInput = z.input<typeof createPostSchema>;
 export type CreatePostData = z.output<typeof createPostSchema>;
 export type UpdateCustodyInput = z.input<typeof updateCustodySchema>;

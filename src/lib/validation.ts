@@ -11,12 +11,25 @@ export const coordsSchema = z.object({
 });
 export type Coords = z.infer<typeof coordsSchema>;
 
-/** URL de una foto subida a nuestro store de Vercel Blob (y no a otro sitio). */
-export const blobUrlSchema = z
-  .url({ protocol: /^https$/ })
-  .refine((u) => new URL(u).hostname.endsWith(BLOB_HOST_SUFFIX), {
-    message: "La foto debe subirse a través de la aplicación",
-  });
+const DEV_UPLOADS_PREFIX = "/dev-uploads/";
+
+function isOwnPhotoUrl(u: string) {
+  if (process.env.NODE_ENV !== "production" && u.startsWith(DEV_UPLOADS_PREFIX)) return true;
+  try {
+    const url = new URL(u);
+    return url.protocol === "https:" && url.hostname.endsWith(BLOB_HOST_SUFFIX);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * URL de una foto subida a través de la app: Vercel Blob en producción
+ * (o /dev-uploads/ en desarrollo sin token de Blob).
+ */
+export const blobUrlSchema = z.string().refine(isOwnPhotoUrl, {
+  message: "La foto debe subirse a través de la aplicación",
+});
 
 /** Fecha pasada (con 1 min de margen por desajustes de reloj). */
 export const pastDateSchema = z.coerce

@@ -1,28 +1,32 @@
 import { z } from "zod";
 
 /**
- * Variables de entorno del servidor, validadas con Zod.
- * Se validan de forma perezosa (al primer uso) para que `next build`
- * no falle en entornos sin secretos (CI, previews sin integración).
+ * Variables de entorno del servidor. Cada una se valida de forma perezosa,
+ * al usarse: así `next build` no exige secretos que la página no necesita
+ * (p. ej. prerenderizar /protectoras solo necesita la BD).
  */
-const serverEnvSchema = z.object({
-  DATABASE_URL: z.url(),
-  BLOB_READ_WRITE_TOKEN: z.string().min(1),
-});
-
-export type ServerEnv = z.infer<typeof serverEnvSchema>;
-
-let cached: ServerEnv | undefined;
-
-export function getServerEnv(): ServerEnv {
-  if (cached) return cached;
-  const parsed = serverEnvSchema.safeParse(process.env);
+function read<T>(name: string, schema: z.ZodType<T>): T {
+  const parsed = schema.safeParse(process.env[name]);
   if (!parsed.success) {
-    const missing = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
-    throw new Error(`Variables de entorno inválidas o ausentes: ${missing}`);
+    throw new Error(`Variable de entorno ${name} inválida o ausente`);
   }
-  cached = parsed.data;
-  return cached;
+  return parsed.data;
 }
+
+const isProduction = () => process.env.NODE_ENV === "production";
+
+export const env = {
+  /** Postgres (Neon en Vercel; cualquier Postgres en local/CI). */
+  databaseUrl: () => read("DATABASE_URL", z.url()),
+  /** Vercel Blob. En desarrollo es opcional: sin token, las fotos van a public/dev-uploads. */
+  blobToken: () =>
+    read(
+      "BLOB_READ_WRITE_TOKEN",
+      isProduction() ? z.string().min(1) : z.string().min(1).optional(),
+    ),
+  /** Vercel lo envía como "Authorization: Bearer <CRON_SECRET>". Obligatorio en producción. */
+  cronSecret: () =>
+    read("CRON_SECRET", isProduction() ? z.string().min(16) : z.string().optional()),
+};
 
 export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

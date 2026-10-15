@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { createPostSchema, updateCustodySchema, type CreatePostInput } from "./validation";
+import {
+  createPostSchema,
+  updateCustodySchema,
+  validateCreatePost,
+  type CreatePostInput,
+} from "./validation";
 
 const SHELTER_ID = "3b2d6f2e-5c1a-4e7b-9d3f-0a1b2c3d4e5f";
 
@@ -63,6 +68,17 @@ describe("createPostSchema", () => {
       seenAt: new Date(Date.now() + 86_400_000).toISOString(),
     });
     expect(r.success).toBe(false);
+  });
+});
+
+describe("validateCreatePost", () => {
+  it("devuelve todos los errores aunque falte la custodia", () => {
+    const r = validateCreatePost({ species: "dog", hasTag: false });
+    expect(r.success).toBe(false);
+    const paths = r.error!.issues.map((i) => i.path.join("."));
+    expect(paths).toEqual(
+      expect.arrayContaining(["custody", "photoUrl", "foundLocation", "locality", "finderName"]),
+    );
   });
 });
 

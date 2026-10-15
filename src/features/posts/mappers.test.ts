@@ -25,6 +25,7 @@ const post: Post = {
   finderName: "Ana",
   finderContact: "ana@example.com",
   authorId: null,
+  manageTokenHash: "hash-secreto",
   expiresAt: new Date("2026-12-09T10:00:00Z"),
   createdAt: new Date("2026-10-10T10:05:00Z"),
   updatedAt: new Date("2026-10-10T10:05:00Z"),
@@ -44,6 +45,7 @@ const shelter: Shelter = {
   website: null,
   openingHours: "L-V 10-14h",
   acceptsDropOff: true,
+  dropOffNotes: null,
   createdAt: new Date("2026-10-01T00:00:00Z"),
   updatedAt: new Date("2026-10-01T00:00:00Z"),
 };
@@ -68,7 +70,14 @@ describe("toPublicPost (reglas de privacidad)", () => {
   });
 
   it("no expone campos internos", () => {
-    for (const key of ["photoPathname", "authorId", "tagPhone", "custodyLat", "shelterId"]) {
+    for (const key of [
+      "photoPathname",
+      "authorId",
+      "tagPhone",
+      "custodyLat",
+      "shelterId",
+      "manageTokenHash",
+    ]) {
       expect(pub).not.toHaveProperty(key);
     }
   });

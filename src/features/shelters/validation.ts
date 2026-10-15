@@ -15,7 +15,10 @@ export const createShelterSchema = z.object({
   email: z.email().optional(),
   website: z.url({ protocol: /^https?$/ }).optional(),
   openingHours: z.string().trim().max(300).optional(),
-  acceptsDropOff: z.boolean().default(true),
+  /** true = confirmado · false = no aceptan · null = sin confirmar (llamar antes). */
+  acceptsDropOff: z.boolean().nullable().default(null),
+  dropOffNotes: z.string().trim().max(500).optional(),
+  status: z.enum(["pending", "approved"]).default("pending"),
 });
 
 export type CreateShelterInput = z.input<typeof createShelterSchema>;

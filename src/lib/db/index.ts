@@ -1,22 +1,17 @@
 import "server-only";
 
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { env } from "@/lib/env";
 
-import { getServerEnv } from "@/lib/env";
-
+import { createDbClient, type Db } from "./client";
 import * as schema from "./schema";
 
-function createDb() {
-  return drizzle({ client: neon(getServerEnv().DATABASE_URL), schema });
-}
+let db: Db | undefined;
 
-let db: ReturnType<typeof createDb> | undefined;
-
-/** Cliente de Drizzle (HTTP serverless de Neon). Se crea en el primer uso. */
-export function getDb() {
-  db ??= createDb();
+/** Cliente de Drizzle. Se crea en el primer uso. */
+export function getDb(): Db {
+  db ??= createDbClient(env.databaseUrl());
   return db;
 }
 
 export { schema };
+export type { Db };

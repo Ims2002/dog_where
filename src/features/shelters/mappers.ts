@@ -12,7 +12,8 @@ export type PublicShelter = {
   email: string | null;
   website: string | null;
   openingHours: string | null;
-  acceptsDropOff: boolean;
+  acceptsDropOff: boolean | null;
+  dropOffNotes: string | null;
 };
 
 export function toPublicShelter(shelter: Shelter): PublicShelter {
@@ -28,5 +29,6 @@ export function toPublicShelter(shelter: Shelter): PublicShelter {
     website: shelter.website,
     openingHours: shelter.openingHours,
     acceptsDropOff: shelter.acceptsDropOff,
+    dropOffNotes: shelter.dropOffNotes,
   };
 }

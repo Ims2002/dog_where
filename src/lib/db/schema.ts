@@ -54,7 +54,10 @@ export const shelters = pgTable(
     email: text("email"),
     website: text("website"),
     openingHours: text("opening_hours"),
-    acceptsDropOff: boolean("accepts_drop_off").notNull().default(true),
+    /** true = confirmado que aceptan animales encontrados · false = no · null = sin confirmar. */
+    acceptsDropOff: boolean("accepts_drop_off"),
+    /** Cómo entregar un animal (p. ej. "llama antes a la Policía Local para leer el chip"). */
+    dropOffNotes: text("drop_off_notes"),
     ...timestamps,
   },
   (t) => [
@@ -98,6 +101,8 @@ export const posts = pgTable(
     finderName: text("finder_name").notNull(),
     finderContact: text("finder_contact").notNull(),
     authorId: text("author_id"), // se rellenará cuando haya auth (fase 2)
+    /** SHA-256 del token del enlace secreto de gestión. El token en claro nunca se guarda. */
+    manageTokenHash: text("manage_token_hash").notNull(),
 
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     ...timestamps,

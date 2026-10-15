@@ -11,10 +11,10 @@ Todo el servicio vive en Vercel: la app Next.js se despliega como funciones serv
      │          │  ├─ Server Components  (listado, detalle, mapa de protectoras)         │
      │          │  ├─ Server Actions     (publicar, cambiar custodia, avistamiento,      │──► Neon Postgres
      │          │  │                      marcar reunido, denunciar)                     │    (aws-eu-central-1)
-     │          │  └─ Route Handlers     (/api/health, /api/blob/upload, cron)           │
+     │          │  └─ Route Handlers     (/api/health, /api/cron/expire)                 │
      │          └────────────────────────────────────────────────────────────────────────┘
-     │  subida directa de fotos (token firmado por /api/blob/upload)
-     └────────────────────────────────────────────────────────────────────────────► Vercel Blob
+     │          │       │ uploadPhoto (Server Action) ─────────────────────────────────────┼──► Vercel Blob
+     └──────────┴───────┘
 ```
 
 ## Conceptos del dominio
@@ -37,7 +37,7 @@ not_caught ──(alguien lo atrapa)──► with_finder ──(lo lleva a la p
 
 **1. Publicar un animal encontrado**
 
-1. El usuario abre `/publicar` y hace o elige una foto. El cliente la redimensiona y re-codifica a WebP (elimina EXIF/GPS) y la sube directamente a Vercel Blob con un token de `/api/blob/upload`.
+1. El usuario abre `/publicar`. Un aviso le recuerda llamar al teléfono de la chapa o a la Policía Local (092) para leer el microchip antes de publicar. Hace o elige una foto: el navegador la redimensiona y re-codifica a WebP (elimina EXIF/GPS) y la Server Action `uploadPhoto` la guarda en Vercel Blob.
 2. Datos del animal: especie, descripción, ¿lleva chapa? (texto + teléfono).
 3. Lugar del hallazgo: geolocalización del navegador o pin en el mapa, y localidad.
 4. **¿Dónde está ahora?**
@@ -110,29 +110,33 @@ Restricciones `CHECK` en `posts`:
 
 ## Decisiones (ADR resumido)
 
-| #   | Decisión                                            | Alternativas consideradas             | Motivo                                                                                                                                                       |
-| --- | --------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | **Next.js 16 en Vercel**                            | SPA + API separada; Astro             | Un solo despliegue, previews por PR, Server Actions eliminan la capa de API.                                                                                 |
-| 2   | **Neon Postgres vía Marketplace**                   | Supabase; Vercel KV/Redis             | Integración nativa en Vercel (variables inyectadas, ramas de BD por preview). Relacional + PostGIS si hace falta. Supabase duplicaría auth/storage.          |
-| 3   | **Drizzle ORM**                                     | Prisma                                | Ligero, sin motor binario, funciona sobre el driver HTTP de Neon en serverless, SQL explícito en las migraciones.                                            |
-| 4   | **Vercel Blob** para fotos                          | Cloudinary; Supabase Storage          | Nativo de Vercel, subida directa desde el cliente, CDN incluido.                                                                                             |
-| 5   | **Sin cuentas en el MVP**; Better Auth en fase 2    | Auth.js v5 (sigue en beta); Clerk     | Publicar y avisar de un avistamiento sin registro maximiza la participación. Better Auth es estable, se integra con Drizzle y no tiene coste por usuario.    |
-| 6   | **Leaflet + OpenStreetMap** para mapas              | Google Maps; Mapbox                   | Sin API key ni facturación; suficiente para pins, reguero (polilínea) y protectoras.                                                                         |
-| 7   | **Fuente Geist autoalojada** (paquete `geist`)      | `next/font/google`                    | El build no depende de la red a Google Fonts.                                                                                                                |
-| 8   | **Región fra1 + Neon Frankfurt**                    | iad1 (por defecto)                    | Usuarios en España; función y BD en la misma región.                                                                                                         |
-| 9   | **Custodia como campo + `CHECK`**, no tabla aparte  | Tabla `custody_events` con histórico  | Solo importa el estado actual; el histórico de movimiento ya lo da el reguero. Si se necesita auditoría, se añade una tabla de eventos sin romper el modelo. |
-| 10  | **Protectoras curadas** (`pending → approved`)      | Que cualquiera cree puntos de entrega | Un punto de entrega falso podría usarse para robar animales. Solo se ofrecen lugares verificados.                                                            |
-| 11  | **Avistamientos abiertos a cualquiera**, sin cuenta | Solo el autor de la publicación       | El valor del reguero depende de que lo alimente el vecindario. Se compensa con límites por publicación y rate limiting.                                      |
-| 12  | **Casa de quien acoge: solo la zona en público**    | Mostrar la ubicación exacta           | Es el domicilio de un particular. La zona (~1 km) basta para que el dueño sepa que es cerca; la dirección se da por contacto directo.                        |
+| #   | Decisión                                                | Alternativas consideradas             | Motivo                                                                                                                                                                           |
+| --- | ------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Next.js 16 en Vercel**                                | SPA + API separada; Astro             | Un solo despliegue, previews por PR, Server Actions eliminan la capa de API.                                                                                                     |
+| 2   | **Neon Postgres vía Marketplace**                       | Supabase; Vercel KV/Redis             | Integración nativa en Vercel (variables inyectadas, ramas de BD por preview). Relacional + PostGIS si hace falta. Supabase duplicaría auth/storage.                              |
+| 3   | **Drizzle ORM**                                         | Prisma                                | Ligero, sin motor binario, funciona sobre el driver HTTP de Neon en serverless, SQL explícito en las migraciones.                                                                |
+| 4   | **Vercel Blob** para fotos, subidas con Server Action   | Cloudinary; client uploads con token  | Nativo de Vercel y con CDN. Al comprimir antes en el navegador la foto pesa poco, así que pasa por el servidor y toda la validación queda en un sitio.                           |
+| 5   | **Sin cuentas en el MVP**; Better Auth en fase 2        | Auth.js v5 (sigue en beta); Clerk     | Publicar y avisar de un avistamiento sin registro maximiza la participación. Better Auth es estable, se integra con Drizzle y no tiene coste por usuario.                        |
+| 6   | **Leaflet + OpenStreetMap**, manejado sin react-leaflet | Google Maps; Mapbox; react-leaflet    | Sin API key ni facturación. react-leaflet fallaba al reactivar rutas ocultas por `<Activity>`; un componente imperativo que crea y destruye su propio contenedor es más robusto. |
+| 7   | **Fuente Geist autoalojada** (paquete `geist`)          | `next/font/google`                    | El build no depende de la red a Google Fonts.                                                                                                                                    |
+| 8   | **Región fra1 + Neon Frankfurt**                        | iad1 (por defecto)                    | Usuarios en España; función y BD en la misma región.                                                                                                                             |
+| 9   | **Custodia como campo + `CHECK`**, no tabla aparte      | Tabla `custody_events` con histórico  | Solo importa el estado actual; el histórico de movimiento ya lo da el reguero. Si se necesita auditoría, se añade una tabla de eventos sin romper el modelo.                     |
+| 10  | **Protectoras curadas** (`pending → approved`)          | Que cualquiera cree puntos de entrega | Un punto de entrega falso podría usarse para robar animales. Solo se ofrecen lugares verificados.                                                                                |
+| 11  | **Avistamientos abiertos a cualquiera**, sin cuenta     | Solo el autor de la publicación       | El valor del reguero depende de que lo alimente el vecindario. Se compensa con límites por publicación y rate limiting.                                                          |
+| 12  | **Casa de quien acoge: solo la zona en público**        | Mostrar la ubicación exacta           | Es el domicilio de un particular. La zona (~1 km) basta para que el dueño sepa que es cerca; la dirección se da por contacto directo.                                            |
+
+| 13 | **Driver `pg` fuera de Neon** | Solo Neon (también en local) | Permite desarrollar con un Postgres en Docker y que la CI construya contra un Postgres de servicio. Coste: no usar transacciones interactivas. |
+| 14 | **Enlace secreto de gestión** en el MVP | Cuentas desde el principio | Publicar sin registro. El token solo se muestra una vez y en la BD se guarda su hash. |
 
 ## Variables de entorno
 
-| Variable                                        | Dónde              | Origen                  |
-| ----------------------------------------------- | ------------------ | ----------------------- |
-| `DATABASE_URL`                                  | Servidor           | Integración Neon        |
-| `BLOB_READ_WRITE_TOKEN`                         | Servidor           | Integración Vercel Blob |
-| `NEXT_PUBLIC_SITE_URL`                          | Cliente + servidor | Manual                  |
-| `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET` | Servidor           | Manual (fase 2)         |
+| Variable                                        | Dónde              | Origen                             |
+| ----------------------------------------------- | ------------------ | ---------------------------------- |
+| `DATABASE_URL`                                  | Servidor           | Integración Neon                   |
+| `BLOB_READ_WRITE_TOKEN`                         | Servidor           | Integración Vercel Blob            |
+| `NEXT_PUBLIC_SITE_URL`                          | Cliente + servidor | Manual                             |
+| `CRON_SECRET`                                   | Servidor           | Manual (obligatoria en producción) |
+| `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET` | Servidor           | Manual (fase 2)                    |
 
 ## Coste estimado
 

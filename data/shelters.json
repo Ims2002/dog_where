@@ -1,0 +1,81 @@
+[
+  {
+    "kind": "shelter",
+    "status": "approved",
+    "name": "APASA – Asociación de Bienestar Animal",
+    "address": "Camí de les Sorts 27, 03730 Xàbia",
+    "locality": "Xàbia",
+    "phone": "966 46 39 76",
+    "email": "apasa.javea@gmail.com",
+    "website": "https://www.apasa.eu/es",
+    "openingHours": "Todos los días de 8:30 a 12:30 y de 16:00 a 18:30",
+    "acceptsDropOff": null,
+    "dropOffNotes": "Llama antes de ir. WhatsApp: 618 754 635.",
+    "source": "https://www.apasa.eu/es"
+  },
+  {
+    "kind": "shelter",
+    "status": "approved",
+    "name": "APAD – Protectora de Animales de Dénia",
+    "address": "Partida Madrigueres Sud 36C, 03700 Dénia",
+    "locality": "Dénia",
+    "phone": "966 42 76 78",
+    "email": "info@apad-apad.org",
+    "website": "https://apad-apad.org/",
+    "openingHours": "Todos los días de 10:00 a 13:00; martes y jueves también de 17:00 a 19:30",
+    "acceptsDropOff": null,
+    "dropOffNotes": "Si encuentras un perro en la calle, quédate con él atado y llama a la Policía Local (092): ellos avisan al servicio de recogida.",
+    "source": "https://apad-apad.org/contacto/"
+  },
+  {
+    "kind": "shelter",
+    "status": "approved",
+    "name": "SCAN Costa Blanca",
+    "address": "Polígono Industrial, C/ Alcoy esquina Camí Cremadella, 03770 El Verger",
+    "locality": "El Verger",
+    "location": { "lat": 38.85963, "lng": -0.00752 },
+    "email": "info@scancostablanca.com",
+    "website": "https://www.scancostablanca.com/",
+    "acceptsDropOff": null,
+    "source": "https://www.scancostablanca.com/contact-us/"
+  },
+  {
+    "kind": "shelter",
+    "status": "approved",
+    "name": "AKIRA – Refugio de perros",
+    "address": "Polígono Industrial La Pedrera, junto a la N-332, entre Teulada y Benissa",
+    "locality": "Benissa",
+    "website": "http://www.akira-animals.com/",
+    "openingHours": "Todos los días de 10:00 a 15:00",
+    "acceptsDropOff": null,
+    "dropOffNotes": "Gestionan la recogida de perros encontrados en Benissa y Teulada junto con la Policía Local.",
+    "source": "http://www.akira-animals.com/"
+  },
+  {
+    "kind": "shelter",
+    "status": "pending",
+    "name": "Associació Animalista Els Poets",
+    "address": "Pedreguer (dirección del refugio por confirmar)",
+    "locality": "Pedreguer",
+    "phone": "633 76 28 94",
+    "email": "elspoets@gmail.com",
+    "website": "https://elspoets.org/",
+    "acceptsDropOff": null,
+    "source": "https://elspoets.org/",
+    "reviewNote": "Pendiente: su web no publica la dirección del refugio. Confirmarla antes de aprobar."
+  },
+  {
+    "kind": "shelter",
+    "status": "approved",
+    "name": "APROP – Protectora de Animales de Pego",
+    "address": "Partida Burjo 3, 03780 Pego",
+    "locality": "Pego",
+    "phone": "611 08 50 24",
+    "email": "apropego@gmail.com",
+    "website": "https://www.aprop-pego.org/es/",
+    "openingHours": "Perros: todos los días de 9:00 a 12:00 y de 16:00 a 18:00, solo con cita previa",
+    "acceptsDropOff": true,
+    "dropOffNotes": "En Pego, llama primero a la Policía Local (965 570 118) para que lean el microchip. Si no tiene chip, puedes llevarlo a APROP.",
+    "source": "https://www.aprop-pego.org/es/lost-found/"
+  }
+]

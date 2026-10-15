@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# fotos subidas en desarrollo sin Vercel Blob
+/public/dev-uploads

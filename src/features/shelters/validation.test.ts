@@ -15,7 +15,8 @@ describe("createShelterSchema", () => {
   it("acepta una perrera válida y normaliza el teléfono", () => {
     const r = createShelterSchema.parse(valid);
     expect(r.phone).toBe("965000000");
-    expect(r.acceptsDropOff).toBe(true);
+    expect(r.acceptsDropOff).toBeNull();
+    expect(r.status).toBe("pending");
   });
 
   it("rechaza tipos desconocidos", () => {
