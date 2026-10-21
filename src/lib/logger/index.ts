@@ -33,6 +33,15 @@ function jsonFormat() {
   return process.env.NODE_ENV === "production";
 }
 
+/**
+ * Hora actual sin `new Date()`: con Cache Components, Next.js prohíbe leer la hora mientras
+ * prerenderiza, y un log (p. ej. de un error) puede emitirse en ese momento. Para
+ * telemetría recomienda la API de tiempos de alta resolución.
+ */
+function nowIso() {
+  return new Date(performance.timeOrigin + performance.now()).toISOString();
+}
+
 export type LogData = Record<string, unknown>;
 
 export type LogRecord = {
@@ -100,7 +109,7 @@ function emit(level: Level, bindings: LogData, event: string, data?: LogData, er
   if (RANK[level] < RANK[threshold()]) return;
   try {
     const record: LogRecord = {
-      ts: new Date().toISOString(),
+      ts: nowIso(),
       level,
       event,
       service: "dogwhere",

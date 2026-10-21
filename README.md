@@ -22,24 +22,25 @@ En local puedes crear cuentas sin configurar nada más: los enlaces de los email
 
 ## Scripts
 
-| Script                      | Qué hace                                                  |
-| --------------------------- | --------------------------------------------------------- |
-| `npm run dev`               | Servidor de desarrollo                                    |
-| `npm run build` / `start`   | Build y servidor de producción                            |
-| `npm run check`             | Lint + tipos + formato + tests (lo mismo que la CI)       |
-| `npm run lint` / `lint:fix` | ESLint                                                    |
-| `npm run typecheck`         | Tipos de rutas + `tsc --noEmit`                           |
-| `npm run format`            | Prettier                                                  |
-| `npm test` / `test:watch`   | Vitest                                                    |
-| `npm run db:generate`       | Genera una migración desde el esquema                     |
-| `npm run db:migrate`        | Aplica migraciones                                        |
-| `npm run db:studio`         | Drizzle Studio                                            |
-| `npm run db:seed:shelters`  | Carga o actualiza las protectoras de `data/shelters.json` |
-| `npm run db:seed:demo`      | Crea 9 publicaciones de prueba (`-- --clean` las borra)   |
+| Script                      | Qué hace                                                     |
+| --------------------------- | ------------------------------------------------------------ |
+| `npm run dev`               | Servidor de desarrollo                                       |
+| `npm run build` / `start`   | Build y servidor de producción                               |
+| `npm run check`             | Lint + tipos + formato + tests (lo mismo que la CI)          |
+| `npm run lint` / `lint:fix` | ESLint                                                       |
+| `npm run typecheck`         | Tipos de rutas + `tsc --noEmit`                              |
+| `npm run format`            | Prettier                                                     |
+| `npm test` / `test:watch`   | Vitest                                                       |
+| `npm run db:generate`       | Genera una migración desde el esquema                        |
+| `npm run db:migrate`        | Aplica migraciones                                           |
+| `npm run db:studio`         | Drizzle Studio                                               |
+| `npm run db:status`         | A qué BD apunta `.env.local`, migraciones aplicadas y tablas |
+| `npm run db:seed:shelters`  | Carga o actualiza las protectoras de `data/shelters.json`    |
+| `npm run db:seed:demo`      | Crea 9 publicaciones de prueba (`-- --clean` las borra)      |
 
 ## Cuentas (Better Auth)
 
-Las cuentas son opcionales: publicar y avisar de un avistamiento siguen funcionando sin registro. Métodos: email + contraseña (con verificación y recuperación), Google y Apple. **Cada botón social solo aparece si sus variables están configuradas.**
+Las cuentas son opcionales: publicar y avisar de un avistamiento siguen funcionando sin registro. Métodos: email + contraseña (con verificación y recuperación), Google y Apple. **Cada botón social solo aparece si sus variables están configuradas**, y en producción el acceso con email se oculta mientras no haya `RESEND_API_KEY` (sin emails no se podría confirmar la cuenta). Sin ningún método configurado, `/entrar` dice que las cuentas llegarán pronto.
 
 ### 1. Imprescindible en producción
 
