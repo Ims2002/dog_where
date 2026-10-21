@@ -21,7 +21,7 @@
 
 **Protectoras**
 
-- [x] `data/shelters.json` con las 6 protectoras de la zona + `npm run db:seed:shelters` (geocodifica con Nominatim)
+- [x] `data/shelters.json` con las 5 protectoras de la zona + `npm run db:seed:shelters` (geocodifica con Nominatim y sincroniza: lo que sale del JSON se borra o se desactiva)
 - [x] `/protectoras`: mapa y listado de las aprobadas
 - [x] Al publicar, protectoras ordenadas por cercanía al lugar del hallazgo
 
@@ -45,6 +45,11 @@
 - [x] Cron diario de caducidad (archivar + borrar datos privados, fotos y avistamientos)
 - [x] Borradores de aviso legal y privacidad; Vercel Web Analytics (sin cookies)
 
+**Observabilidad**
+
+- [x] Logs estructurados en toda la app (`src/lib/logger`): contexto por petición, Server Actions con `runAction`, errores del servidor (`onRequestError`) y del navegador, redacción de datos personales, catálogo en `docs/LOGGING.md`
+- [ ] Log Drain en Vercel (Axiom o Better Stack) con alertas para `level:error`
+
 **Pendiente de la Fase 1**
 
 - [ ] Filtro por fecha en el listado
@@ -54,15 +59,17 @@
 
 - [ ] Conectar el repo a Vercel, añadir Supabase y Blob, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL` y `DATABASE_CA_CERT`
 - [ ] `npm run db:migrate` y `npm run db:seed:shelters` contra producción
-- [ ] Revisar en el mapa la ubicación de cada protectora (las "Partida …" pueden geocodificar de forma aproximada)
+- [ ] Poner en `data/shelters.json` las coordenadas exactas de cada protectora (`"location": "lat, lng"`, copiadas de Google Maps) y volver a ejecutar el seed
 - [ ] Llamar a cada protectora para confirmar si acepta animales encontrados (`acceptsDropOff`) y cómo
-- [ ] Els Poets: conseguir la dirección del refugio y aprobarla
 - [ ] Completar titular, NIF y contacto en Privacidad y Aviso legal y revisarlos
 - [ ] Probar el flujo completo desde un móvil real con la preview de Vercel
 
 ## Fase 2 — Comunidad y anti-abuso
 
-- [ ] Cuentas (Google + enlace mágico por email): Supabase Auth o Better Auth, a decidir
+- [x] Cuentas con Better Auth: email + contraseña (verificación y recuperación), Google, Apple (lista, oculta hasta configurarla), «Mi cuenta» con sus publicaciones y borrado de cuenta
+- [ ] Configurar en producción: `BETTER_AUTH_SECRET`, Resend (dominio verificado), Google OAuth; Apple cuando haya cuenta de desarrollador
+- [ ] Logos oficiales de Google y Apple en los botones (descargados de sus kits de marca)
+- [ ] Panel de administración (rol admin) para aprobar protectoras y revisar denuncias
 - [ ] Rate limiting (Upstash Redis) + honeypot en publicaciones, avistamientos y denuncias
 - [ ] Formulario público de solicitud de alta de protectoras + panel de moderación
 - [ ] Alertas por zona (email) cuando se publica un animal cerca o hay un avistamiento nuevo en un reguero que sigues

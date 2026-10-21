@@ -48,7 +48,7 @@ Fuera de alcance del MVP: chat interno, pagos, app nativa, publicaciones de "se 
 | Calidad       | ESLint (config de Next) + Prettier                | `npm run check` lo ejecuta todo.                                           |
 | Hosting       | **Vercel**, región `fra1`                         | Misma región que el proyecto de Supabase (Frankfurt, `eu-central-1`).      |
 
-Mapas con **Leaflet + OpenStreetMap** (`src/components/map`). Auth (Better Auth) y rate limiting (Upstash) se añaden en la fase 2; la justificación está en ARCHITECTURE.md.
+Mapas con **Leaflet + OpenStreetMap** (`src/components/map`). Cuentas con **Better Auth** (`src/lib/auth`, emails con Resend); el rate limiting general (Upstash) llega en la fase 2. La justificación está en ARCHITECTURE.md.
 
 > **Next.js 16 no es el Next.js "de siempre".** Antes de usar una API de Next, consulta la doc que viene en `node_modules/next/dist/docs/`. Especialmente: Cache Components (`"use cache"`, `cacheLife`, `cacheTag`) y `connection()`.
 
@@ -78,9 +78,10 @@ dog_where/
     │   │   ├── actions.ts       # Server Actions   ("use server")
     │   │   ├── mappers.ts       # Post de BD → DTO público (aplica reglas de privacidad)
     │   │   └── components/      # Componentes propios del dominio
+    │   ├── auth/            # Pantallas de cuenta: entrar, registro, contraseña, Mi cuenta
     │   ├── shelters/        # Protectoras, perreras y veterinarios (puntos de referencia)
     │   └── sightings/       # Reguero de avistamientos de animales sin capturar
-    └── lib/                 # Transversal: db, env, storage, tokens, format, geo, phone, validation
+    └── lib/                 # Transversal: db, env, auth, email, storage, tokens, format, geo…
 ```
 
 Reglas:
@@ -137,16 +138,17 @@ Reglas:
 
 Toda Server Action:
 
-1. Valida la entrada con Zod en el servidor (aunque el cliente ya lo haya hecho).
-2. Comprueba permisos (en cuanto exista auth).
-3. Devuelve un resultado tipado; **no lanza excepciones para errores esperados**:
+1. Envuelve su cuerpo en `runAction("dominio.accion", async () => …)` (ver §13): así queda registrada con su `requestId`, duración y resultado.
+2. Valida la entrada con Zod en el servidor (aunque el cliente ya lo haya hecho).
+3. Comprueba permisos (en cuanto exista auth).
+4. Devuelve un resultado tipado; **no lanza excepciones para errores esperados**:
 
 ```ts
 type ActionResult<T> =
   { ok: true; data: T } | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
 ```
 
-Las excepciones se reservan para lo inesperado (BD caída), que acaba en `error.tsx`.
+Las excepciones se reservan para lo inesperado (BD caída), que acaba en `error.tsx` y queda registrada como `action.error`.
 
 ### Estilo y formato
 
@@ -233,6 +235,7 @@ Además:
 - La conversión de `Post` (BD) a lo que ve el cliente pasa **siempre** por un mapper (`features/posts/mappers.ts` → `toPublicPost`). Nunca se envía un `Post` crudo a un Client Component.
 - Antes del lanzamiento: Aviso legal, Política de privacidad y aviso de cookies. Usamos Vercel Web Analytics (sin cookies) para no necesitar banner de consentimiento.
 - Quien publica puede borrar su publicación (y con ella su reguero de avistamientos). Cualquiera puede denunciarla (tabla `reports`).
+- **Cuentas:** el email de un usuario nunca se muestra en público ni sale en los logs (se registra solo su `userId`). Borrar la cuenta borra sus publicaciones, sesiones y métodos de acceso. La cookie de sesión es técnica (no necesita consentimiento); la política de privacidad lo explica.
 
 ---
 
@@ -242,6 +245,14 @@ Además:
 - Las variables de servidor se leen con `env.*()` de `src/lib/env.ts` (validadas con Zod al usarse). Solo lo prefijado con `NEXT_PUBLIC_` llega al navegador.
 - **Enlace de gestión:** al publicar se genera un token aleatorio; en la BD solo se guarda su SHA-256 y se compara en tiempo constante. La ruta `/gestionar/*` se sirve con `Referrer-Policy: no-referrer` y `noindex`.
 - El cron (`/api/cron/expire`) exige `Authorization: Bearer $CRON_SECRET`.
+- **Cuentas (Better Auth):**
+  - La sesión del servidor se lee siempre con `getSession()` / `getCurrentUser()` de `src/lib/auth/session.ts`, dentro de un `<Suspense>` (lee cookies). En el cliente, `authClient` de `src/lib/auth/client.ts`.
+  - Lo que exija dueño se comprueba **en el servidor** (`authorize()` en las acciones de posts): o el token del enlace o `session.user.id === post.authorId`. Ocultar un botón no es seguridad.
+  - Cualquier redirección tras entrar pasa por `safeNext()` (solo rutas internas).
+  - Los mensajes no revelan si un email está registrado (registro y recuperación responden igual).
+  - Contraseñas: mínimo 8, hash scrypt (Better Auth). Al restablecerla o cambiarla se cierran las demás sesiones.
+  - Las rutas con tokens en la URL (`/restablecer`) llevan `Referrer-Policy: no-referrer`, y el logger tapa `?token=`, `?code=`, `?state=` y `/reset-password/<token>`.
+  - Tablas nuevas de auth: también con `.enableRLS()`.
 - Toda entrada de usuario se valida en el servidor. Nada de `dangerouslySetInnerHTML` con contenido de usuario.
 - Cabeceras de seguridad definidas en `next.config.ts` (`nosniff`, `X-Frame-Options`, `Permissions-Policy` limitada a cámara y geolocalización).
 - Los avistamientos se pueden añadir sin cuenta, así que son lo más expuesto a spam: límite de `MAX_SIGHTINGS_PER_POST` por publicación desde el MVP, y solo se aceptan en publicaciones `active` con custodia `not_caught`.
@@ -282,7 +293,7 @@ Configuración inicial (una sola vez):
    - Blob: añade `BLOB_READ_WRITE_TOKEN`.
    - Recomendado: en Supabase → _Database Settings → SSL Configuration_, descargar el certificado y pegarlo en la variable `DATABASE_CA_CERT` de Vercel.
    - Las previews usan por defecto la misma BD que producción. Para aislarlas, crea un segundo proyecto de Supabase y pon sus `POSTGRES_URL*` en el entorno _Preview_ de Vercel.
-3. Añadir en Environment Variables (Production y Preview): `NEXT_PUBLIC_SITE_URL` y `CRON_SECRET` (cadena aleatoria de 16+ caracteres; Vercel la envía al cron).
+3. Añadir en Environment Variables (Production y Preview): `NEXT_PUBLIC_SITE_URL`, `CRON_SECRET` (cadena aleatoria de 16+ caracteres; Vercel la envía al cron), `BETTER_AUTH_SECRET` (32+ caracteres) y las de Resend, Google y Apple (ver «Cuentas» en el README).
 4. En local: `npx vercel link` y `npx vercel env pull .env.local`.
 5. Aplicar migraciones: `npm run db:migrate`.
 6. Cargar protectoras: `npm run db:seed:shelters` y revisar en el mapa los enlaces que imprime.
@@ -298,7 +309,21 @@ Día a día: PR → preview automática → merge → producción automática. L
 
 ---
 
-## 13. Definición de "hecho"
+## 13. Logs
+
+Todo lo que pasa en el servidor y los errores del navegador se registran con el logger de `src/lib/logger`. Detalle, configuración y **catálogo de eventos** en [LOGGING.md](./LOGGING.md).
+
+- **Nunca `console.*`**: ESLint lo prohíbe fuera de `src/lib/logger`. Usa `createLogger("modulo")`.
+- **Server Actions** siempre dentro de `runAction(...)`. Route handlers y crons, con `withLogContext` + `log.time`.
+- **Eventos con nombre `dominio.accion`** (`post.created`, `sighting.rejected`) y datos estructurados, no frases.
+- **Niveles**: `info` = algo de negocio que ha ido bien; `warn` = rechazado o sospechoso pero controlado; `error` = alguien debería mirarlo; `debug` = solo desarrollo.
+- **Sin datos personales**: solo IDs, enums, contadores y duraciones. Nada de teléfonos, emails, nombres, textos libres ni coordenadas. El logger los tapa por si acaso, pero no los pases.
+- **Errores como tercer argumento**: `log.error("x.failed", { postId }, error)`.
+- **Cada evento nuevo se añade al catálogo de LOGGING.md en el mismo PR.**
+
+---
+
+## 14. Definición de "hecho"
 
 Una tarea está terminada cuando:
 
@@ -308,4 +333,5 @@ Una tarea está terminada cuando:
 - [ ] Respeta las reglas de privacidad (§8); si toca datos personales, tiene test.
 - [ ] Es accesible con teclado y tiene textos alternativos.
 - [ ] Si cambia el esquema, incluye la migración.
+- [ ] Las acciones nuevas usan `runAction` y sus eventos están en el catálogo de LOGGING.md.
 - [ ] Si cambia una decisión de esta guía, la guía está actualizada en el mismo PR.

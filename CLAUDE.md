@@ -2,7 +2,7 @@
 
 # DogWhere — contexto para agentes
 
-App para que quien encuentra un animal extraviado publique foto, información y ubicación (con datos de su chapa) y su dueño lo recupere. Cada publicación tiene una **custodia**: `with_finder` (en casa de quien lo encontró), `at_shelter` (en una protectora dada de alta) o `not_caught` (sin capturar, con un reguero de avistamientos). Next.js 16 en Vercel + Supabase Postgres (Drizzle + `pg`, sin el SDK de Supabase) + Vercel Blob.
+App para que quien encuentra un animal extraviado publique foto, información y ubicación (con datos de su chapa) y su dueño lo recupere. Cada publicación tiene una **custodia**: `with_finder` (en casa de quien lo encontró), `at_shelter` (en una protectora dada de alta) o `not_caught` (sin capturar, con un reguero de avistamientos). Next.js 16 en Vercel + Supabase Postgres (Drizzle + `pg`, sin el SDK de Supabase) + Vercel Blob + Better Auth (cuentas opcionales) + Resend.
 
 **Antes de escribir código lee `docs/GUIDELINES.md`.** Arquitectura y decisiones en `docs/ARCHITECTURE.md`; tareas pendientes en `docs/ROADMAP.md`.
 
@@ -25,5 +25,7 @@ npm run db:migrate   # aplicar migraciones
 - **Privacidad:** nunca enviar filas crudas al cliente; usar los mappers (`toPublicPost`, `toPublicSighting`, `toPublicShelter`). Teléfono de chapa enmascarado; hallazgo ~100 m, casa de quien acoge ~1 km, avistamientos ~11 m (`PUBLIC_DECIMALS`). Cualquier cambio en datos personales lleva test.
 - **Toda tabla nueva lleva `.enableRLS()`** (Supabase expone `public` por su API REST).
 - Solo protectoras `approved` se pueden elegir; avistamientos solo en publicaciones `active` + `not_caught`.
+- **Logs:** nada de `console.*`; `createLogger("modulo")` y Server Actions dentro de `runAction(...)`. Eventos `dominio.accion` sin datos personales, y cada evento nuevo al catálogo de `docs/LOGGING.md`.
+- **Cuentas (Better Auth):** opcionales. Sesión con `getSession()`/`getCurrentUser()` (`src/lib/auth/session.ts`) dentro de `<Suspense>`; en cliente `authClient`. Permisos de autor siempre en el servidor. Redirecciones con `safeNext()`. Botones sociales solo si hay credenciales (`enabledSocialProviders()`).
 - Cache Components activo: datos dinámicos por defecto; `"use cache"` + `cacheLife` + `cacheTag`, y `revalidateTag` tras mutar.
 - Conventional Commits (`feat: …` con descripción en español).

@@ -12,6 +12,7 @@ import { Field, Input, Textarea } from "@/components/ui/field";
 import { NowDateTimeInput, readDateTime } from "@/components/ui/now-datetime-input";
 import type { PublicShelter } from "@/features/shelters/mappers";
 import { toFieldErrors } from "@/lib/action-result";
+import { authClient } from "@/lib/auth/client";
 
 import { createPost } from "../actions";
 import { SPECIES, SPECIES_LABEL, type Species } from "../constants";
@@ -50,15 +51,18 @@ export function PublishForm({ shelters }: { shelters: PublicShelter[] }) {
   const [locality, setLocality] = useState("");
   const seenAtRef = useRef<HTMLInputElement>(null);
   const [custody, setCustody] = useState<CustodyValue>(EMPTY_CUSTODY);
-  const [finderName, setFinderName] = useState("");
+  // null = sin tocar: con sesión iniciada se muestra el nombre de la cuenta.
+  const [finderNameInput, setFinderName] = useState<string | null>(null);
   const [finderContact, setFinderContact] = useState("");
+  const { data: session } = authClient.useSession();
+  const finderName = finderNameInput ?? session?.user.name ?? "";
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
   const [pending, startTransition] = useTransition();
 
-  if (created) return <Published created={created} />;
+  if (created) return <Published created={created} withAccount={!!session} />;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +105,18 @@ export function PublishForm({ shelters }: { shelters: PublicShelter[] }) {
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-10">
+      {session === null && (
+        <p className="text-ink-muted -mt-4 text-sm">
+          Puedes publicar sin cuenta. Si{" "}
+          <Link
+            href="/entrar?next=%2Fpublicar"
+            className="font-semibold underline underline-offset-4"
+          >
+            entras
+          </Link>{" "}
+          antes, tendrás tus publicaciones a mano en «Mi cuenta».
+        </p>
+      )}
       <Step n={1} title="La foto">
         <PhotoInput
           folder="posts"
@@ -291,7 +307,7 @@ export function PublishForm({ shelters }: { shelters: PublicShelter[] }) {
   );
 }
 
-function Published({ created }: { created: Created }) {
+function Published({ created, withAccount }: { created: Created; withAccount: boolean }) {
   const [copied, setCopied] = useState(false);
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const postUrl = `${origin}/mascota/${created.id}`;
@@ -311,7 +327,18 @@ function Published({ created }: { created: Created }) {
         <p className="font-bold">Guarda tu enlace de gestión</p>
         <p className="text-sm">
           Con él podrás cambiar dónde está el animal, marcarlo como reunido con su familia o borrar
-          la publicación. Es la única forma de hacerlo, así que guárdalo y no lo compartas.
+          la publicación.{" "}
+          {withAccount ? (
+            <>
+              También puedes hacerlo desde{" "}
+              <Link href="/cuenta" className="font-semibold underline underline-offset-4">
+                Mi cuenta
+              </Link>
+              .
+            </>
+          ) : (
+            "Es la única forma de hacerlo, así que guárdalo y no lo compartas."
+          )}
         </p>
         <code className="bg-street block overflow-x-auto rounded p-3 text-sm break-all">
           {manageUrl}

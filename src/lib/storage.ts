@@ -7,6 +7,9 @@ import path from "node:path";
 import { del, put } from "@vercel/blob";
 
 import { env } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("storage");
 
 export type StoredPhoto = { url: string; pathname: string };
 
@@ -34,6 +37,7 @@ export async function putPhoto(file: File, folder: "posts" | "sightings"): Promi
     const target = path.join(DEV_DIR, name);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, Buffer.from(await file.arrayBuffer()));
+    log.debug("storage.put", { backend: "local", pathname: name, bytes: file.size });
     return { url: `${DEV_UPLOADS_PREFIX}${name}`, pathname: name };
   }
 
@@ -42,6 +46,7 @@ export async function putPhoto(file: File, folder: "posts" | "sightings"): Promi
     contentType: file.type,
     addRandomSuffix: false,
   });
+  log.debug("storage.put", { backend: "blob", pathname: blob.pathname, bytes: file.size });
   return { url: blob.url, pathname: blob.pathname };
 }
 
@@ -55,7 +60,9 @@ export async function deletePhotos(pathnames: string[]) {
       return;
     }
     await del(list, { abortSignal: AbortSignal.timeout(15_000) });
+    log.info("storage.deleted", { count: list.length });
   } catch (error) {
-    console.error("No se pudieron borrar fotos", error);
+    // Quedan fotos huérfanas en Blob: no rompe nada, pero conviene saberlo para limpiarlas.
+    log.error("storage.delete_failed", { count: list.length, pathnames: list }, error);
   }
 }

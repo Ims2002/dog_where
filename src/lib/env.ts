@@ -32,6 +32,29 @@ export const env = {
   /** Vercel lo envía como "Authorization: Bearer <CRON_SECRET>". Obligatorio en producción. */
   cronSecret: () =>
     read("CRON_SECRET", isProduction() ? z.string().min(16) : z.string().optional()),
+  /** Firma de sesiones y tokens de Better Auth. Obligatorio en producción (32+ caracteres). */
+  authSecret: () =>
+    read(
+      "BETTER_AUTH_SECRET",
+      isProduction() ? z.string().min(32) : z.string().min(1).optional(),
+    ) ?? "dev-secret-solo-para-desarrollo-local-no-usar",
+  /** Clave de Resend para enviar emails. Sin ella, en desarrollo los emails salen en los logs. */
+  resendApiKey: () => read("RESEND_API_KEY", z.string().min(1).optional()),
+  /** Remitente de los emails, p. ej. "DogWhere <hola@tudominio.com>". */
+  emailFrom: () =>
+    read("EMAIL_FROM", z.string().min(3).optional()) ?? "DogWhere <onboarding@resend.dev>",
 };
+
+/**
+ * URL base de la app para Better Auth (callbacks de OAuth, enlaces de los emails).
+ * Producción: BETTER_AUTH_URL o NEXT_PUBLIC_SITE_URL. Previews: la URL del despliegue.
+ */
+export function authBaseUrl(): string {
+  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
+  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+}
 
 export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

@@ -3,6 +3,7 @@ import "server-only";
 import { and, inArray, isNotNull, lt } from "drizzle-orm";
 
 import { getDb } from "@/lib/db";
+import { createLogger } from "@/lib/logger";
 import { posts, sightings } from "@/lib/db/schema";
 import { deletePhotos } from "@/lib/storage";
 
@@ -12,13 +13,18 @@ import { deletePhotos } from "@/lib/storage";
  * Se conserva la ficha mínima (especie, localidad, fechas) por si hay que atender
  * una denuncia; la foto y el reguero se eliminan.
  */
+const log = createLogger("cron");
+
 export async function archiveExpiredPosts(now = new Date()) {
   const db = getDb();
   const expired = await db
     .select({ id: posts.id, photoPathname: posts.photoPathname })
     .from(posts)
     .where(and(inArray(posts.status, ["active", "reunited"]), lt(posts.expiresAt, now)));
-  if (expired.length === 0) return { archived: 0 };
+  if (expired.length === 0) {
+    log.info("posts.expire.none");
+    return { archived: 0 };
+  }
 
   const ids = expired.map((p) => p.id);
   const sightingPhotos = await db
@@ -43,5 +49,10 @@ export async function archiveExpiredPosts(now = new Date()) {
     ...expired.map((p) => p.photoPathname),
     ...sightingPhotos.map((s) => s.pathname ?? ""),
   ]);
+  log.info("posts.archived", {
+    archived: ids.length,
+    postIds: ids,
+    photosDeleted: expired.length + sightingPhotos.length,
+  });
   return { archived: ids.length };
 }

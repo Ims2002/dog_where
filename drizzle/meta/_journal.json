@@ -22,6 +22,13 @@
       "when": 1792054427945,
       "tag": "0002_enable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792570568215,
+      "tag": "0003_auth_tables",
+      "breakpoints": true
     }
   ]
 }

@@ -85,14 +85,19 @@ async function PostDetailView({ id }: { id: string }) {
         </div>
       </div>
 
-      <section className="flex flex-col gap-3" aria-labelledby="donde-esta">
-        <h2 id="donde-esta" className="condensed text-3xl font-extrabold">
-          Dónde está ahora
-        </h2>
-        <CustodySection post={post} sightings={sightings} now={now} />
-      </section>
+      {/* Si ya está con su familia, no tiene sentido indicar dónde recogerlo ni pedir contacto. */}
+      {post.status !== "reunited" && (
+        <>
+          <section className="flex flex-col gap-3" aria-labelledby="donde-esta">
+            <h2 id="donde-esta" className="condensed text-3xl font-extrabold">
+              Dónde está ahora
+            </h2>
+            <CustodySection post={post} sightings={sightings} now={now} />
+          </section>
 
-      <ContactStrip post={post} />
+          <ContactStrip post={post} />
+        </>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <ShareButton title={headline} />
@@ -153,8 +158,9 @@ function CustodySection({
           areas={c.area ? [{ ...c.area, radiusM: 1000 }] : []}
         />
         <p className="text-ink-muted text-sm">
-          El punto amarillo es donde se encontró (aproximado). La zona verde es dónde está ahora; la
-          dirección exacta te la dará quien lo encontró.
+          {c.area
+            ? "El punto amarillo es donde se encontró (aproximado). La zona verde es dónde está ahora; la dirección exacta te la dará quien lo encontró."
+            : "El punto amarillo es donde se encontró (aproximado). La dirección donde está ahora te la dará quien lo encontró."}
         </p>
       </>
     );

@@ -2,7 +2,7 @@
 
 Publica la foto de un animal que has encontrado o visto suelto —con los datos de su chapa si la lleva— para que su familia pueda encontrarlo.
 
-**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Supabase (Postgres) + Drizzle · Vercel Blob · Vercel
+**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Supabase (Postgres) + Drizzle · Vercel Blob · Better Auth + Resend · Vercel
 
 ## Puesta en marcha
 
@@ -17,6 +17,8 @@ npm run dev
 ```
 
 Abre http://localhost:3000. Comprobación de salud: http://localhost:3000/api/health
+
+En local puedes crear cuentas sin configurar nada más: los enlaces de los emails (confirmar cuenta, cambiar contraseña) salen en la terminal de `npm run dev`.
 
 ## Scripts
 
@@ -33,11 +35,48 @@ Abre http://localhost:3000. Comprobación de salud: http://localhost:3000/api/he
 | `npm run db:migrate`        | Aplica migraciones                                        |
 | `npm run db:studio`         | Drizzle Studio                                            |
 | `npm run db:seed:shelters`  | Carga o actualiza las protectoras de `data/shelters.json` |
+| `npm run db:seed:demo`      | Crea 9 publicaciones de prueba (`-- --clean` las borra)   |
+
+## Cuentas (Better Auth)
+
+Las cuentas son opcionales: publicar y avisar de un avistamiento siguen funcionando sin registro. Métodos: email + contraseña (con verificación y recuperación), Google y Apple. **Cada botón social solo aparece si sus variables están configuradas.**
+
+### 1. Imprescindible en producción
+
+- `BETTER_AUTH_SECRET`: genera uno con `openssl rand -base64 32` y ponlo en Vercel (Production y Preview).
+- **Resend** (emails de confirmación y de contraseña):
+  1. Crea una cuenta en resend.com y añade tu dominio en **Domains**; copia los registros DNS que te da en tu proveedor de dominio y espera a que salga _Verified_.
+  2. **API Keys → Create** con permiso _Sending access_ → `RESEND_API_KEY`.
+  3. `EMAIL_FROM`, p. ej. `DogWhere <hola@tudominio.com>` (del dominio verificado).
+  > Sin dominio propio puedes probar con `onboarding@resend.dev`, pero Resend solo entrega a tu propio email: nadie más podría confirmar su cuenta.
+
+### 2. Google
+
+1. [Google Cloud Console](https://console.cloud.google.com/) → crea un proyecto → **Google Auth Platform**.
+2. _Branding_: nombre "DogWhere", email de soporte y dominio. _Audience_: **External** y, cuando lo hayas probado, **Publish app**.
+3. _Clients → Create client → Web application_:
+   - Orígenes autorizados: `https://dogwhere-three.vercel.app` (y `http://localhost:3000` para probar en local).
+   - URIs de redirección: `https://dogwhere-three.vercel.app/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google`).
+4. Copia el _Client ID_ y el _Client secret_ en `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+
+### 3. Apple (cuando tengas cuenta de Apple Developer, 99 $/año)
+
+1. [Certificates, Identifiers & Profiles](https://developer.apple.com/account/resources/identifiers/list) → **Identifiers → App IDs**: crea uno con la capacidad _Sign in with Apple_.
+2. **Identifiers → Services IDs**: crea uno (p. ej. `com.dogwhere.web`) → es tu `APPLE_CLIENT_ID`. Actívale _Sign in with Apple → Configure_:
+   - Dominio: `dogwhere-three.vercel.app`
+   - Return URL: `https://dogwhere-three.vercel.app/api/auth/callback/apple`
+3. **Keys**: crea una clave con _Sign in with Apple_, descárgala (`.p8`, solo se puede una vez) → su _Key ID_ es `APPLE_KEY_ID` y el contenido del archivo, `APPLE_PRIVATE_KEY`.
+4. Tu _Team ID_ (arriba a la derecha en la web de Apple Developer) → `APPLE_TEAM_ID`.
+
+Apple no permite `localhost`: se prueba en producción o en una preview con dominio propio. La app firma sola el _client secret_ que pide Apple.
+
+Tras añadir o cambiar variables en Vercel, haz un **Redeploy** para que se apliquen.
 
 ## Documentación
 
 - [Guía de desarrollo](docs/GUIDELINES.md) — estándares del proyecto (léela antes de contribuir)
 - [Arquitectura](docs/ARCHITECTURE.md) — componentes, modelo de datos y decisiones
+- [Logs](docs/LOGGING.md) — cómo se registran los eventos, dónde verlos y catálogo
 - [Roadmap](docs/ROADMAP.md)
 
 ## Despliegue

@@ -15,14 +15,24 @@ import type { PublicPost } from "../mappers";
 import { CustodyFields, custodyInput, type CustodyValue } from "./custody-fields";
 
 type Props = {
+  /** Token del enlace secreto. Vacío = el autor gestiona desde su cuenta (con sesión). */
   token: string;
+  /** Adónde volver tras borrar. */
+  backHref?: string;
   post: PublicPost;
   initialCustody: CustodyValue;
   foundLocation: LatLng;
   shelters: PublicShelter[];
 };
 
-export function ManagePanel({ token, post, initialCustody, foundLocation, shelters }: Props) {
+export function ManagePanel({
+  token,
+  backHref = "/",
+  post,
+  initialCustody,
+  foundLocation,
+  shelters,
+}: Props) {
   const router = useRouter();
   const [custody, setCustody] = useState(initialCustody);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -36,8 +46,8 @@ export function ManagePanel({ token, post, initialCustody, foundLocation, shelte
       <div className="flex flex-col gap-3" role="status">
         <p className="condensed text-3xl font-extrabold">Publicación borrada</p>
         <p>Se han borrado la publicación, sus fotos y sus avistamientos.</p>
-        <Link href="/" className="font-semibold underline underline-offset-4">
-          Volver al inicio
+        <Link href={backHref} className="font-semibold underline underline-offset-4">
+          {backHref === "/" ? "Volver al inicio" : "Volver"}
         </Link>
       </div>
     );

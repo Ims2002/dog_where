@@ -40,17 +40,34 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
+      <h2 className="condensed mt-4 text-2xl font-extrabold">Si creas una cuenta</h2>
+      <p>
+        La cuenta es opcional. Si la creas, guardamos tu nombre y tu email; tu contraseña, cifrada
+        (nunca en claro). Si entras con Google o Apple, recibimos de ellos solo tu nombre, tu email
+        y tu foto de perfil, y guardamos los identificadores que nos dan para mantener la sesión. De
+        cada sesión guardamos la fecha, la IP y el navegador, para protegerte frente a accesos
+        indebidos y limitar intentos repetidos.
+      </p>
+      <p>
+        Usamos tu email solo para confirmar la cuenta y para cambiar la contraseña. Los emails se
+        envían con Resend. Puedes borrar tu cuenta cuando quieras desde «Mi cuenta»: se borran tus
+        datos, tus sesiones y tus publicaciones.
+      </p>
+
       <h2 className="condensed mt-4 text-2xl font-extrabold">Cuánto tiempo</h2>
       <p>
         Las publicaciones se archivan solas a los 60 días (o 7 días después de marcarse como
         reunidas). Al archivarlas borramos la foto, los avistamientos, los datos de la chapa y la
-        ubicación de la casa. Puedes borrar tu publicación cuando quieras con tu enlace de gestión.
+        ubicación de la casa. Puedes borrar tu publicación cuando quieras con tu enlace de gestión o
+        desde tu cuenta.
       </p>
 
       <h2 className="condensed mt-4 text-2xl font-extrabold">Cookies y analítica</h2>
       <p>
-        No usamos cookies de publicidad ni de seguimiento. Medimos visitas de forma agregada con
-        Vercel Web Analytics, que no usa cookies.
+        No usamos cookies de publicidad ni de seguimiento. Si entras en tu cuenta, usamos una cookie
+        técnica para mantener la sesión abierta (hasta 30 días); sin ella no podrías entrar, por eso
+        no te pedimos permiso. Medimos visitas de forma agregada con Vercel Web Analytics, que no
+        usa cookies.
       </p>
 
       <h2 className="condensed mt-4 text-2xl font-extrabold">Tus derechos</h2>

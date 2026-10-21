@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ButtonLink } from "@/components/ui/button";
+import { UserMenu, UserMenuFallback } from "@/components/user-menu";
 
 export function SiteHeader() {
   return (
@@ -19,6 +21,9 @@ export function SiteHeader() {
           <ButtonLink href="/publicar" variant="ink" size="sm">
             Publicar
           </ButtonLink>
+          <Suspense fallback={<UserMenuFallback />}>
+            <UserMenu />
+          </Suspense>
         </nav>
       </div>
     </header>

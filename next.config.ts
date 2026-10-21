@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
       { source: "/:path*", headers: securityHeaders },
       // El enlace de gestión lleva un secreto en la ruta: que no salga en el Referer.
       { source: "/gestionar/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      // Igual con el token para cambiar la contraseña (?token=…).
+      { source: "/restablecer", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
     ];
   },
 };

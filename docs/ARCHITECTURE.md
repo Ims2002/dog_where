@@ -11,7 +11,8 @@ Todo el servicio vive en Vercel: la app Next.js se despliega como funciones serv
      │          │  ├─ Server Components  (listado, detalle, mapa de protectoras)         │
      │          │  ├─ Server Actions     (publicar, cambiar custodia, avistamiento,      │──► Supabase Postgres
      │          │  │                      marcar reunido, denunciar)                     │    (aws-eu-central-1)
-     │          │  └─ Route Handlers     (/api/health, /api/cron/expire)                 │
+     │          │  ├─ Route Handlers     (/api/health, /api/cron/expire)                 │
+     │          │  └─ Better Auth        (/api/auth/*: email, Google, Apple) ─► Resend    │
      │          └────────────────────────────────────────────────────────────────────────┘
      │          │       │ uploadPhoto (Server Action) ─────────────────────────────────────┼──► Vercel Blob
      └──────────┴───────┘
@@ -91,7 +92,7 @@ shelters                                   posts
 └─ created_at, updated_at                  ├─ shelter_id ──────► shelters.id   (solo si at_shelter)
                                            ├─ custody_lat/lng  PRIVADO → ~1 km (solo si with_finder)
 sightings                                  ├─ finder_name, finder_contact
-├─ id               uuid PK                ├─ author_id        (fase 2)
+├─ id               uuid PK                ├─ author_id ───────► users.id (set null; opcional)
 ├─ post_id ─────────► posts.id (cascade)   ├─ expires_at
 ├─ lat, lng         → ~11 m                └─ created_at, updated_at
 ├─ seen_at
@@ -100,6 +101,21 @@ sightings                                  ├─ finder_name, finder_contact
 └─ created_at                              ├─ reason enum(spam, inappropriate, wrong_info, other)
                                            └─ details, created_at
 ```
+
+Cuentas (tablas de Better Auth, ids de texto que genera la librería):
+
+```
+users                          sessions                       accounts
+├─ id            text PK       ├─ id, token (único)           ├─ id
+├─ name, email (único)         ├─ user_id ──► users (cascade) ├─ user_id ──► users (cascade)
+├─ email_verified, image       ├─ expires_at                  ├─ provider_id  credential | google | apple
+└─ created_at, updated_at      └─ ip_address, user_agent      ├─ account_id   (id en el proveedor)
+                                                              ├─ password     (hash scrypt, solo credential)
+verifications (tokens de email y de contraseña)               └─ access/refresh/id tokens del proveedor
+rate_limits   (contador por IP y ruta de /api/auth)
+```
+
+Al borrar un usuario se borran antes sus publicaciones (con fotos y avistamientos) y después, en cascada, sus sesiones y cuentas.
 
 Restricciones `CHECK` en `posts`:
 
@@ -110,35 +126,61 @@ Restricciones `CHECK` en `posts`:
 
 ## Decisiones (ADR resumido)
 
-| #   | Decisión                                                | Alternativas consideradas             | Motivo                                                                                                                                                                           |
-| --- | ------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Next.js 16 en Vercel**                                | SPA + API separada; Astro             | Un solo despliegue, previews por PR, Server Actions eliminan la capa de API.                                                                                                     |
-| 2   | **Supabase (solo su Postgres) vía Marketplace**         | Neon; PocketBase                      | Ya conocido, panel cómodo para ver y editar datos, integración con Vercel que inyecta las variables. PocketBase necesita un servidor siempre encendido y no encaja en Vercel.    |
-| 3   | **Drizzle ORM + `pg`** (sin el SDK de Supabase)         | Prisma; supabase-js                   | Ligero, sin motor binario, SQL explícito en las migraciones y tipos desde el esquema. Toda la lógica en el servidor; no dependemos de la API REST de Supabase.                   |
-| 4   | **Vercel Blob** para fotos, subidas con Server Action   | Cloudinary; client uploads con token  | Nativo de Vercel y con CDN. Al comprimir antes en el navegador la foto pesa poco, así que pasa por el servidor y toda la validación queda en un sitio.                           |
-| 5   | **Sin cuentas en el MVP**; Better Auth en fase 2        | Auth.js v5 (sigue en beta); Clerk     | Publicar y avisar de un avistamiento sin registro maximiza la participación. Better Auth es estable, se integra con Drizzle y no tiene coste por usuario.                        |
-| 6   | **Leaflet + OpenStreetMap**, manejado sin react-leaflet | Google Maps; Mapbox; react-leaflet    | Sin API key ni facturación. react-leaflet fallaba al reactivar rutas ocultas por `<Activity>`; un componente imperativo que crea y destruye su propio contenedor es más robusto. |
-| 7   | **Fuente Archivo autoalojada** (`next/font/local`)      | `next/font/google`                    | El build no depende de la red a Google Fonts. Su eje de anchura da los titulares estrechos de cartel.                                                                            |
-| 8   | **Región fra1 + Supabase Frankfurt**                    | iad1 (por defecto)                    | Usuarios en España; función y BD en la misma región.                                                                                                                             |
-| 9   | **Custodia como campo + `CHECK`**, no tabla aparte      | Tabla `custody_events` con histórico  | Solo importa el estado actual; el histórico de movimiento ya lo da el reguero. Si se necesita auditoría, se añade una tabla de eventos sin romper el modelo.                     |
-| 10  | **Protectoras curadas** (`pending → approved`)          | Que cualquiera cree puntos de entrega | Un punto de entrega falso podría usarse para robar animales. Solo se ofrecen lugares verificados.                                                                                |
-| 11  | **Avistamientos abiertos a cualquiera**, sin cuenta     | Solo el autor de la publicación       | El valor del reguero depende de que lo alimente el vecindario. Se compensa con límites por publicación y rate limiting.                                                          |
-| 12  | **Casa de quien acoge: solo la zona en público**        | Mostrar la ubicación exacta           | Es el domicilio de un particular. La zona (~1 km) basta para que el dueño sepa que es cerca; la dirección se da por contacto directo.                                            |
-| 13  | **RLS activado sin políticas** en todas las tablas      | Desactivar la API REST de Supabase    | La clave _publishable_ es pública y la API REST expone el esquema `public`. Con RLS sin políticas no ve nada; la app es propietaria de las tablas y no le afecta.                |
-| 14  | **Enlace secreto de gestión** en el MVP                 | Cuentas desde el principio            | Publicar sin registro. El token solo se muestra una vez y en la BD se guarda su hash.                                                                                            |
+| #   | Decisión                                                | Alternativas consideradas                        | Motivo                                                                                                                                                                           |
+| --- | ------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Next.js 16 en Vercel**                                | SPA + API separada; Astro                        | Un solo despliegue, previews por PR, Server Actions eliminan la capa de API.                                                                                                     |
+| 2   | **Supabase (solo su Postgres) vía Marketplace**         | Neon; PocketBase                                 | Ya conocido, panel cómodo para ver y editar datos, integración con Vercel que inyecta las variables. PocketBase necesita un servidor siempre encendido y no encaja en Vercel.    |
+| 3   | **Drizzle ORM + `pg`** (sin el SDK de Supabase)         | Prisma; supabase-js                              | Ligero, sin motor binario, SQL explícito en las migraciones y tipos desde el esquema. Toda la lógica en el servidor; no dependemos de la API REST de Supabase.                   |
+| 4   | **Vercel Blob** para fotos, subidas con Server Action   | Cloudinary; client uploads con token             | Nativo de Vercel y con CDN. Al comprimir antes en el navegador la foto pesa poco, así que pasa por el servidor y toda la validación queda en un sitio.                           |
+| 5   | **Better Auth** para cuentas (opcionales)               | Auth.js v5 (sigue en beta); Clerk; Supabase Auth | Estable, se integra con Drizzle y nuestras tablas, sin coste por usuario ni otro servicio. Las cuentas son opcionales: publicar y avisar de un avistamiento sigue sin registro.  |
+| 6   | **Leaflet + OpenStreetMap**, manejado sin react-leaflet | Google Maps; Mapbox; react-leaflet               | Sin API key ni facturación. react-leaflet fallaba al reactivar rutas ocultas por `<Activity>`; un componente imperativo que crea y destruye su propio contenedor es más robusto. |
+| 7   | **Fuente Archivo autoalojada** (`next/font/local`)      | `next/font/google`                               | El build no depende de la red a Google Fonts. Su eje de anchura da los titulares estrechos de cartel.                                                                            |
+| 8   | **Región fra1 + Supabase Frankfurt**                    | iad1 (por defecto)                               | Usuarios en España; función y BD en la misma región.                                                                                                                             |
+| 9   | **Custodia como campo + `CHECK`**, no tabla aparte      | Tabla `custody_events` con histórico             | Solo importa el estado actual; el histórico de movimiento ya lo da el reguero. Si se necesita auditoría, se añade una tabla de eventos sin romper el modelo.                     |
+| 10  | **Protectoras curadas** (`pending → approved`)          | Que cualquiera cree puntos de entrega            | Un punto de entrega falso podría usarse para robar animales. Solo se ofrecen lugares verificados.                                                                                |
+| 11  | **Avistamientos abiertos a cualquiera**, sin cuenta     | Solo el autor de la publicación                  | El valor del reguero depende de que lo alimente el vecindario. Se compensa con límites por publicación y rate limiting.                                                          |
+| 12  | **Casa de quien acoge: solo la zona en público**        | Mostrar la ubicación exacta                      | Es el domicilio de un particular. La zona (~1 km) basta para que el dueño sepa que es cerca; la dirección se da por contacto directo.                                            |
+| 13  | **RLS activado sin políticas** en todas las tablas      | Desactivar la API REST de Supabase               | La clave _publishable_ es pública y la API REST expone el esquema `public`. Con RLS sin políticas no ve nada; la app es propietaria de las tablas y no le afecta.                |
+| 14  | **Enlace secreto de gestión** en el MVP                 | Cuentas desde el principio                       | Publicar sin registro. El token solo se muestra una vez y en la BD se guarda su hash.                                                                                            |
+
+## Observabilidad
+
+Logs estructurados propios (`src/lib/logger`) en JSON hacia stdout/stderr, que Vercel recoge en **Logs** y puede reenviar con un Log Drain. Cada petición lleva un `requestId` que se propaga con `AsyncLocalStorage`. `instrumentation.ts` captura los errores no controlados del servidor y `instrumentation-client.ts` los del navegador. Detalle en [LOGGING.md](./LOGGING.md).
+
+| #   | Decisión                                          | Alternativas                      | Motivo                                                                                                                                                                                |
+| --- | ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 15  | **Logger propio** (≈150 líneas, sin dependencias) | pino; Sentry; OpenTelemetry       | pino usa workers para sus transportes y encaja mal en serverless; Sentry/OTel son útiles más adelante. Con JSON + Vercel Logs basta para empezar, y cambiar el _sink_ no toca la app. |
+| 16  | **Redacción automática** de datos personales      | Confiar en que nadie los registre | RGPD: los logs salen de la BD y pueden ir a terceros. Red de seguridad por clave y por patrón (emails, teléfonos, parámetros SQL, tokens en rutas).                                   |
+
+### Cuentas
+
+| #   | Decisión                                                             | Alternativas                       | Motivo                                                                                                                                                     |
+| --- | -------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17  | **Email + contraseña con verificación**, Google y Apple              | Enlace mágico; solo redes sociales | Lo más familiar para cualquiera. La verificación evita cuentas con emails ajenos y permite vincular Google/Apple con seguridad al mismo usuario.           |
+| 18  | **Botones sociales solo si hay credenciales**                        | Flags de configuración aparte      | Apple queda "listo pero oculto" hasta tener la cuenta de desarrollador: basta con añadir sus 4 variables. El client secret de Apple se firma solo (ES256). |
+| 19  | **Resend** para los emails                                           | SMTP propio; Postmark              | API simple, plan gratuito suficiente. Sin clave, en local los enlaces salen en la terminal.                                                                |
+| 20  | **Sesión en BD + cookie de caché (5 min)**                           | JWT sin estado                     | Se pueden revocar (cambio de contraseña, borrado). La cookie firmada evita una consulta por página.                                                        |
+| 21  | **El autor gestiona desde su cuenta**, el enlace secreto se mantiene | Quitar el enlace si hay cuenta     | Quien publica sin cuenta no pierde nada; quien tiene cuenta no depende de guardar el enlace.                                                               |
+| 22  | **Borrar la cuenta borra sus publicaciones**                         | Anonimizarlas                      | Llevan su nombre y su contacto. RGPD: supresión real.                                                                                                      |
+| 23  | **Rate limit de Better Auth en la BD** (`rate_limits`)               | Memoria; Upstash                   | En serverless la memoria no se comparte entre instancias. Sin otro servicio. Login 5/min, registro 5/h, recuperar contraseña 3/h por IP.                   |
 
 ## Variables de entorno
 
-| Variable                                        | Dónde              | Origen                                              |
-| ----------------------------------------------- | ------------------ | --------------------------------------------------- |
-| `POSTGRES_URL`                                  | Servidor           | Integración Supabase (pooler, transacción)          |
-| `POSTGRES_URL_NON_POOLING`                      | Migraciones        | Integración Supabase                                |
-| `DATABASE_CA_CERT`                              | Servidor           | Manual (recomendada): CA de Supabase                |
-| `DATABASE_URL`                                  | Local / CI         | Alternativa a `POSTGRES_URL` con un Postgres propio |
-| `BLOB_READ_WRITE_TOKEN`                         | Servidor           | Integración Vercel Blob                             |
-| `NEXT_PUBLIC_SITE_URL`                          | Cliente + servidor | Manual                                              |
-| `CRON_SECRET`                                   | Servidor           | Manual (obligatoria en producción)                  |
-| `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET` | Servidor           | Manual (fase 2)                                     |
+| Variable                                     | Dónde              | Origen                                              |
+| -------------------------------------------- | ------------------ | --------------------------------------------------- |
+| `POSTGRES_URL`                               | Servidor           | Integración Supabase (pooler, transacción)          |
+| `POSTGRES_URL_NON_POOLING`                   | Migraciones        | Integración Supabase                                |
+| `DATABASE_CA_CERT`                           | Servidor           | Manual (recomendada): CA de Supabase                |
+| `DATABASE_URL`                               | Local / CI         | Alternativa a `POSTGRES_URL` con un Postgres propio |
+| `BLOB_READ_WRITE_TOKEN`                      | Servidor           | Integración Vercel Blob                             |
+| `NEXT_PUBLIC_SITE_URL`                       | Cliente + servidor | Manual                                              |
+| `LOG_LEVEL`, `LOG_FORMAT`, `LOG_DB_QUERIES`  | Servidor           | Opcionales (ver LOGGING.md)                         |
+| `CRON_SECRET`                                | Servidor           | Manual (obligatoria en producción)                  |
+| `BETTER_AUTH_SECRET`                         | Servidor           | Manual (obligatoria en producción, 32+ caracteres)  |
+| `BETTER_AUTH_URL`                            | Servidor           | Opcional (por defecto `NEXT_PUBLIC_SITE_URL`)       |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   | Servidor           | Google Cloud Console (opcional: activa el botón)    |
+| `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY` | Servidor           | Apple Developer (opcional: activa el botón)         |
+| `RESEND_API_KEY`, `EMAIL_FROM`               | Servidor           | Resend (obligatoria en producción para los emails)  |
 
 ## Coste estimado
 
