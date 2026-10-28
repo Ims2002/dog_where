@@ -5,6 +5,8 @@ import { updateTag } from "next/cache";
 
 import { POSTS_TAG, postTag } from "@/features/posts/constants";
 import { fail, failValidation, ok, type ActionResult } from "@/lib/action-result";
+import { guardAction } from "@/lib/anti-spam";
+import type { HoneypotInput } from "@/lib/anti-spam/limits";
 import { getDb } from "@/lib/db";
 import { createLogger } from "@/lib/logger";
 import { runAction } from "@/lib/logger/action";
@@ -16,8 +18,12 @@ import { createSightingSchema, type CreateSightingInput } from "./validation";
 const log = createLogger("sightings");
 
 /** Añade un punto al reguero de un animal sin capturar. Cualquiera puede hacerlo. */
-export async function createSighting(input: CreateSightingInput): Promise<ActionResult> {
+export async function createSighting(
+  input: CreateSightingInput & HoneypotInput,
+): Promise<ActionResult> {
   return runAction("sighting.create", async () => {
+    const blocked = await guardAction("sighting.create", input);
+    if (blocked) return blocked;
     const parsed = createSightingSchema.safeParse(input);
     if (!parsed.success) return failValidation(parsed.error);
     const d = parsed.data;

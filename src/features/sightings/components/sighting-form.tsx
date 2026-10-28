@@ -11,6 +11,8 @@ import { Field, Input, Textarea } from "@/components/ui/field";
 import { NowDateTimeInput, readDateTime } from "@/components/ui/now-datetime-input";
 import { toFieldErrors } from "@/lib/action-result";
 
+import { useHoneypot } from "@/components/ui/honeypot";
+
 import { createSighting } from "../actions";
 import { createSightingSchema } from "../validation";
 
@@ -24,6 +26,7 @@ export function SightingForm({ postId }: { postId: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const honeypot = useHoneypot();
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +48,7 @@ export function SightingForm({ postId }: { postId: string }) {
     setErrors({});
     setFormError(null);
     startTransition(async () => {
-      const result = await createSighting(check.data);
+      const result = await createSighting({ ...check.data, ...honeypot.value() });
       if (result.ok) {
         router.push(`/mascota/${postId}`);
       } else {
@@ -56,7 +59,8 @@ export function SightingForm({ postId }: { postId: string }) {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-6">
+    <form onSubmit={submit} noValidate className="relative flex flex-col gap-6">
+      {honeypot.field}
       <LocationPicker
         label="¿Dónde lo has visto?"
         value={location}

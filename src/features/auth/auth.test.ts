@@ -43,6 +43,7 @@ describe("mensajes de error", () => {
   it("traduce errores del callback social", () => {
     expect(callbackErrorMessage(undefined)).toBeNull();
     expect(callbackErrorMessage("access_denied")).toMatch(/cancelado/);
-    expect(callbackErrorMessage("otro")).toMatch(/No se ha podido/);
+    expect(callbackErrorMessage("otro")).toMatch(/No se ha podido.*Código: otro/);
+    expect(callbackErrorMessage("state_mismatch")).toMatch(/caducado/);
   });
 });

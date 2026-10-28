@@ -38,11 +38,7 @@ export const env = {
       "BETTER_AUTH_SECRET",
       isProduction() ? z.string().min(32) : z.string().min(1).optional(),
     ) ?? "dev-secret-solo-para-desarrollo-local-no-usar",
-  /** Clave de Resend para enviar emails. Sin ella, en desarrollo los emails salen en los logs. */
-  resendApiKey: () => read("RESEND_API_KEY", z.string().min(1).optional()),
-  /** Remitente de los emails, p. ej. "DogWhere <hola@tudominio.com>". */
-  emailFrom: () =>
-    read("EMAIL_FROM", z.string().min(3).optional()) ?? "DogWhere <onboarding@resend.dev>",
+  // Los emails (Resend o SMTP) se configuran en src/lib/email/transport.ts.
 };
 
 /**

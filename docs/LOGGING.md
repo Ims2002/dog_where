@@ -87,9 +87,14 @@ Mantén esta tabla al día: **cada evento nuevo se añade aquí en el mismo PR**
 | `user.deleted`               | info         | auth      | `userId`, `posts`                                                                       | Cuenta borrada por su dueño                                                 |
 | `auth.library`               | warn / error | auth      | `message`, `err`                                                                        | Aviso o error interno de Better Auth (contraseña incorrecta, fallo de BD…)  |
 | `auth.session_failed`        | error        | auth      | `err`                                                                                   | No se pudo leer la sesión en la cabecera (la página sigue sin sesión)       |
-| `email.sent`                 | info         | email     | `kind`, `emailId`                                                                       | Email enviado por Resend (nunca el destinatario)                            |
-| `email.send_failed`          | error        | email     | `kind`, `code`, `err`                                                                   | Resend ha rechazado o fallado el envío                                      |
-| `email.not_configured`       | error        | email     | `kind`                                                                                  | Producción sin `RESEND_API_KEY`: el email no sale                           |
+| `email.sent`                 | info         | email     | `kind`, `via` (`resend`/`smtp`), `emailId`                                              | Email enviado (nunca el destinatario)                                       |
+| `email.send_failed`          | error        | email     | `kind`, `via`, `code`, `err`                                                            | El proveedor de email ha rechazado o fallado el envío                       |
+| `email.not_configured`       | error        | email     | `kind`                                                                                  | Producción sin Resend ni SMTP: el email no sale                             |
+| `spam.honeypot`              | warn         | anti-spam | `limit` (acción)                                                                        | Alguien (un bot) ha rellenado el campo trampa                               |
+| `rate_limit.exceeded`        | warn         | anti-spam | `limit`, `count`, `max`                                                                 | Demasiados envíos desde la misma IP                                         |
+| `rate_limit.failed`          | error        | anti-spam | `limit`, `err`                                                                          | No se pudo consultar el límite (se deja pasar)                              |
+| `rate_limit.purged`          | info         | cron      | `count`                                                                                 | El cron borra contadores de más de un día                                   |
+| `rate_limit.purge_failed`    | error        | cron      | `err`                                                                                   | Fallo al borrar contadores antiguos                                         |
 | `email.dev_preview`          | info         | email     | `kind`                                                                                  | Solo local: el enlace se escribe en la terminal                             |
 
 ## Cómo añadir logs a una funcionalidad nueva

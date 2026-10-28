@@ -27,5 +27,6 @@ npm run db:migrate   # aplicar migraciones
 - Solo protectoras `approved` se pueden elegir; avistamientos solo en publicaciones `active` + `not_caught`.
 - **Logs:** nada de `console.*`; `createLogger("modulo")` y Server Actions dentro de `runAction(...)`. Eventos `dominio.accion` sin datos personales, y cada evento nuevo al catálogo de `docs/LOGGING.md`.
 - **Cuentas (Better Auth):** opcionales. Sesión con `getSession()`/`getCurrentUser()` (`src/lib/auth/session.ts`) dentro de `<Suspense>`; en cliente `authClient`. Permisos de autor siempre en el servidor. Redirecciones con `safeNext()`. Botones sociales solo si hay credenciales (`enabledSocialProviders()`).
+- **Anti-spam:** toda Server Action pública empieza con `guardAction("accion", input)` (límite por IP + campo trampa) y su formulario usa `useHoneypot()`. Límites en `src/lib/anti-spam/limits.ts`.
 - Cache Components activo: datos dinámicos por defecto; `"use cache"` + `cacheLife` + `cacheTag`, y `revalidateTag` tras mutar.
 - Conventional Commits (`feat: …` con descripción en español).

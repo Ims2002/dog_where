@@ -50,8 +50,15 @@ export default function PrivacyPage() {
       </p>
       <p>
         Usamos tu email solo para confirmar la cuenta y para cambiar la contraseña. Los emails se
-        envían con Resend. Puedes borrar tu cuenta cuando quieras desde «Mi cuenta»: se borran tus
-        datos, tus sesiones y tus publicaciones.
+        envían a través de nuestro proveedor de correo (Gmail o Resend). Puedes borrar tu cuenta
+        cuando quieras desde «Mi cuenta»: se borran tus datos, tus sesiones y tus publicaciones.
+      </p>
+
+      <h2 className="condensed mt-4 text-2xl font-extrabold">Protección contra el spam</h2>
+      <p>
+        Para evitar envíos masivos contamos cuántas publicaciones, avistamientos, fotos y denuncias
+        llegan desde cada conexión. No guardamos tu IP: guardamos una huella cifrada que no permite
+        recuperarla, y la borramos al cabo de un día.
       </p>
 
       <h2 className="condensed mt-4 text-2xl font-extrabold">Cuánto tiempo</h2>

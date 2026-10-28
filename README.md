@@ -2,7 +2,7 @@
 
 Publica la foto de un animal que has encontrado o visto suelto —con los datos de su chapa si la lleva— para que su familia pueda encontrarlo.
 
-**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Supabase (Postgres) + Drizzle · Vercel Blob · Better Auth + Resend · Vercel
+**Stack:** Next.js 16 · TypeScript · Tailwind CSS v4 · Supabase (Postgres) + Drizzle · Vercel Blob · Better Auth + emails (Gmail SMTP o Resend) · Vercel
 
 ## Puesta en marcha
 
@@ -40,15 +40,24 @@ En local puedes crear cuentas sin configurar nada más: los enlaces de los email
 
 ## Cuentas (Better Auth)
 
-Las cuentas son opcionales: publicar y avisar de un avistamiento siguen funcionando sin registro. Métodos: email + contraseña (con verificación y recuperación), Google y Apple. **Cada botón social solo aparece si sus variables están configuradas**, y en producción el acceso con email se oculta mientras no haya `RESEND_API_KEY` (sin emails no se podría confirmar la cuenta). Sin ningún método configurado, `/entrar` dice que las cuentas llegarán pronto.
+Las cuentas son opcionales: publicar y avisar de un avistamiento siguen funcionando sin registro. Métodos: email + contraseña (con verificación y recuperación), Google y Apple. **Cada botón social solo aparece si sus variables están configuradas**, y en producción el acceso con email se oculta mientras no haya forma de enviar emails, Gmail o Resend (sin emails no se podría confirmar la cuenta). Sin ningún método configurado, `/entrar` dice que las cuentas llegarán pronto.
 
 ### 1. Imprescindible en producción
 
 - `BETTER_AUTH_SECRET`: genera uno con `openssl rand -base64 32` y ponlo en Vercel (Production y Preview).
-- **Resend** (emails de confirmación y de contraseña):
+- **Emails** (confirmación de cuenta y cambio de contraseña). Elige **una** de estas dos opciones:
+
+  **Opción A — Gmail (sin dominio propio, para empezar).** Hasta unos 500 emails al día, enviados desde tu cuenta de Gmail.
+  1. Mejor con una cuenta de Gmail solo para la app (p. ej. `dogwhere.app@gmail.com`): será el remitente que vea la gente.
+  2. En esa cuenta, activa la **verificación en dos pasos** (myaccount.google.com → Seguridad).
+  3. Ve a myaccount.google.com/apppasswords, crea una contraseña de aplicación llamada "DogWhere" y copia los 16 caracteres.
+  4. En Vercel: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=<la cuenta de Gmail>`, `SMTP_PASS=<la contraseña de aplicación>`.
+
+  **Opción B — Resend (con dominio propio, recomendado a largo plazo):**
   1. Crea una cuenta en resend.com y añade tu dominio en **Domains**; copia los registros DNS que te da en tu proveedor de dominio y espera a que salga _Verified_.
   2. **API Keys → Create** con permiso _Sending access_ → `RESEND_API_KEY`.
-  3. `EMAIL_FROM`, p. ej. `DogWhere <hola@tudominio.com>` (del dominio verificado).
+  3. `EMAIL_FROM`, p. ej. `DogWhere <hola@tudominio.com>` (del dominio verificado). Si hay `RESEND_API_KEY`, tiene prioridad sobre Gmail.
+
   > Sin dominio propio puedes probar con `onboarding@resend.dev`, pero Resend solo entrega a tu propio email: nadie más podría confirmar su cuenta.
 
 ### 2. Google

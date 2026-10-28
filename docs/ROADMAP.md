@@ -6,9 +6,9 @@
 - [x] Drizzle + Postgres: esquema `posts` (con custodia), `shelters`, `sightings`, `reports` y migración inicial
 - [x] Validación (publicación, cambio de custodia, avistamiento, alta de protectora) y utilidades de privacidad con tests
 - [x] Guía de desarrollo, arquitectura, CI en GitHub Actions
-- [ ] Crear repo en GitHub y conectar a Vercel
-- [ ] Añadir Supabase y Blob desde Vercel Storage; `vercel env pull`; `npm run db:migrate`
-- [ ] `/api/health` en verde en producción
+- [x] Crear repo en GitHub y conectar a Vercel
+- [x] Añadir Supabase y Blob desde Vercel Storage; `vercel env pull`; `npm run db:migrate`
+- [x] `/api/health` en verde en producción
 
 ## Fase 1 — MVP ✅ (código)
 
@@ -57,20 +57,23 @@
 
 ## Antes del lanzamiento
 
-- [ ] Conectar el repo a Vercel, añadir Supabase y Blob, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL` y `DATABASE_CA_CERT`
-- [ ] `npm run db:migrate` y `npm run db:seed:shelters` contra producción
+- [x] Conectar el repo a Vercel, añadir Supabase y Blob, `CRON_SECRET`, `NEXT_PUBLIC_SITE_URL` y `DATABASE_CA_CERT`
+- [x] `npm run db:migrate` y `npm run db:seed:shelters` contra producción
 - [ ] Poner en `data/shelters.json` las coordenadas exactas de cada protectora (`"location": "lat, lng"`, copiadas de Google Maps) y volver a ejecutar el seed
 - [ ] Llamar a cada protectora para confirmar si acepta animales encontrados (`acceptsDropOff`) y cómo
 - [ ] Completar titular, NIF y contacto en Privacidad y Aviso legal y revisarlos
 - [ ] Probar el flujo completo desde un móvil real con la preview de Vercel
+- [ ] Borrar las publicaciones de prueba: `npm run db:seed:demo -- --clean`
 
 ## Fase 2 — Comunidad y anti-abuso
 
 - [x] Cuentas con Better Auth: email + contraseña (verificación y recuperación), Google, Apple (lista, oculta hasta configurarla), «Mi cuenta» con sus publicaciones y borrado de cuenta
-- [ ] Configurar en producción: `BETTER_AUTH_SECRET`, Resend (dominio verificado), Google OAuth; Apple cuando haya cuenta de desarrollador
+- [x] Google OAuth en producción
+- [ ] Emails en producción: Gmail con contraseña de aplicación (o Resend con dominio) para activar email + contraseña
+- [ ] Apple cuando haya cuenta de desarrollador
 - [ ] Logos oficiales de Google y Apple en los botones (descargados de sus kits de marca)
 - [ ] Panel de administración (rol admin) para aprobar protectoras y revisar denuncias
-- [ ] Rate limiting (Upstash Redis) + honeypot en publicaciones, avistamientos y denuncias
+- [x] Anti-spam: límite por IP (Postgres) + campo trampa en fotos, publicaciones, avistamientos y denuncias
 - [ ] Formulario público de solicitud de alta de protectoras + panel de moderación
 - [ ] Alertas por zona (email) cuando se publica un animal cerca o hay un avistamiento nuevo en un reguero que sigues
 - [ ] Tests e2e con Playwright de los flujos críticos

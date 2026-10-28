@@ -2,10 +2,10 @@ import "server-only";
 
 import { Resend } from "resend";
 
-import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 
 import type { EmailContent } from "./templates";
+import { emailTransport } from "./transport";
 
 const log = createLogger("email");
 
@@ -15,14 +15,14 @@ let resend: Resend | undefined;
 export type EmailKind = "verify_email" | "reset_password" | "existing_account";
 
 /**
- * Envía un email transaccional. Con RESEND_API_KEY usa Resend; sin ella, en desarrollo
- * escribe el enlace en la terminal para poder probar el flujo sin enviar nada.
+ * Envía un email transaccional por Resend o SMTP (ver transport.ts). Sin ninguno, en
+ * desarrollo escribe el enlace en la terminal para poder probar el flujo.
  * No lanza: un fallo de envío se registra y la petición sigue (Better Auth no expone
  * al usuario si el email existe o no).
  */
 export async function sendEmail(kind: EmailKind, to: string, content: EmailContent) {
-  const apiKey = env.resendApiKey();
-  if (!apiKey) {
+  const transport = emailTransport();
+  if (!transport) {
     if (process.env.NODE_ENV === "production") {
       log.error("email.not_configured", { kind });
       return;
@@ -35,21 +35,37 @@ export async function sendEmail(kind: EmailKind, to: string, content: EmailConte
     return;
   }
 
-  resend ??= new Resend(apiKey);
+  const message = { to, subject: content.subject, html: content.html, text: content.text };
   try {
-    const { data, error } = await resend.emails.send({
-      from: env.emailFrom(),
-      to,
-      subject: content.subject,
-      html: content.html,
-      text: content.text,
-    });
-    if (error) {
-      log.error("email.send_failed", { kind, code: error.name }, new Error(error.message));
+    if (transport.kind === "resend") {
+      resend ??= new Resend(transport.apiKey);
+      const { data, error } = await resend.emails.send({ from: transport.from, ...message });
+      if (error) {
+        log.error(
+          "email.send_failed",
+          { kind, via: "resend", code: error.name },
+          new Error(error.message),
+        );
+        return;
+      }
+      log.info("email.sent", { kind, via: "resend", emailId: data?.id });
       return;
     }
-    log.info("email.sent", { kind, emailId: data?.id });
+
+    // SMTP: import dinámico para no cargar nodemailer si no se usa.
+    const { createTransport } = await import("nodemailer");
+    const smtp = createTransport({
+      host: transport.host,
+      port: transport.port,
+      secure: transport.secure,
+      auth: { user: transport.user, pass: transport.pass },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
+    });
+    const info = await smtp.sendMail({ from: transport.from, ...message });
+    log.info("email.sent", { kind, via: "smtp", emailId: info.messageId });
   } catch (error) {
-    log.error("email.send_failed", { kind }, error);
+    log.error("email.send_failed", { kind, via: transport.kind }, error);
   }
 }

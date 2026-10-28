@@ -48,7 +48,7 @@ Fuera de alcance del MVP: chat interno, pagos, app nativa, publicaciones de "se 
 | Calidad       | ESLint (config de Next) + Prettier                | `npm run check` lo ejecuta todo.                                           |
 | Hosting       | **Vercel**, región `fra1`                         | Misma región que el proyecto de Supabase (Frankfurt, `eu-central-1`).      |
 
-Mapas con **Leaflet + OpenStreetMap** (`src/components/map`). Cuentas con **Better Auth** (`src/lib/auth`, emails con Resend); el rate limiting general (Upstash) llega en la fase 2. La justificación está en ARCHITECTURE.md.
+Mapas con **Leaflet + OpenStreetMap** (`src/components/map`). Cuentas con **Better Auth** (`src/lib/auth`; emails por Gmail SMTP o Resend, `src/lib/email`). Anti-spam propio en Postgres (`src/lib/anti-spam`). La justificación está en ARCHITECTURE.md.
 
 > **Next.js 16 no es el Next.js "de siempre".** Antes de usar una API de Next, consulta la doc que viene en `node_modules/next/dist/docs/`. Especialmente: Cache Components (`"use cache"`, `cacheLife`, `cacheTag`) y `connection()`.
 
@@ -257,7 +257,7 @@ Además:
 - Cabeceras de seguridad definidas en `next.config.ts` (`nosniff`, `X-Frame-Options`, `Permissions-Policy` limitada a cámara y geolocalización).
 - Los avistamientos se pueden añadir sin cuenta, así que son lo más expuesto a spam: límite de `MAX_SIGHTINGS_PER_POST` por publicación desde el MVP, y solo se aceptan en publicaciones `active` con custodia `not_caught`.
 - Las protectoras se crean en estado `pending` y solo un administrador las pasa a `approved`. Nunca se puede elegir una protectora no aprobada.
-- Anti-abuso (fase 2): rate limiting por IP en la creación de publicaciones, avistamientos y denuncias (Upstash Redis), y un honeypot en los formularios.
+- **Anti-spam** (`src/lib/anti-spam`): toda Server Action que cree algo sin cuenta empieza con `guardAction("accion", input)`, que comprueba el **campo trampa** y el **límite por IP** (ventana fija en la tabla `action_limits`, una sentencia atómica). Los límites están en `RATE_LIMITS` (`limits.ts`). Los formularios usan `useHoneypot()` y envían `...honeypot.value()`. La IP nunca se guarda en claro (HMAC con `BETTER_AUTH_SECRET`) y el cron borra los contadores de más de un día. Solo actúa en producción (`RATE_LIMIT=on` para probarlo en local) y, si la BD falla, deja pasar.
 - `npm audit` se revisa en cada actualización de dependencias. A día de hoy los avisos abiertos son de herramientas de desarrollo (`drizzle-kit`, `eslint-config-next`) y no llegan a producción.
 
 ---

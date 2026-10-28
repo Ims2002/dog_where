@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Select, Textarea } from "@/components/ui/field";
+import { useHoneypot } from "@/components/ui/honeypot";
 
 import { reportPost } from "../actions";
 
@@ -19,10 +20,16 @@ export function ReportForm({ postId }: { postId: string }) {
   const [details, setDetails] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const honeypot = useHoneypot();
 
   function submit() {
     startTransition(async () => {
-      const r = await reportPost({ postId, reason, details: details || undefined });
+      const r = await reportPost({
+        postId,
+        reason,
+        details: details || undefined,
+        ...honeypot.value(),
+      });
       setResult(r.ok ? "Denuncia enviada. La revisaremos." : r.error);
     });
   }
@@ -37,7 +44,8 @@ export function ReportForm({ postId }: { postId: string }) {
           {result}
         </p>
       ) : (
-        <div className="mt-3 flex max-w-md flex-col gap-3">
+        <div className="relative mt-3 flex max-w-md flex-col gap-3">
+          {honeypot.field}
           <label className="flex flex-col gap-1 font-semibold">
             Motivo
             <Select value={reason} onChange={(e) => setReason(e.target.value as typeof reason)}>

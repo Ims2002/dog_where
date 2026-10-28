@@ -12,7 +12,7 @@ Todo el servicio vive en Vercel: la app Next.js se despliega como funciones serv
      │          │  ├─ Server Actions     (publicar, cambiar custodia, avistamiento,      │──► Supabase Postgres
      │          │  │                      marcar reunido, denunciar)                     │    (aws-eu-central-1)
      │          │  ├─ Route Handlers     (/api/health, /api/cron/expire)                 │
-     │          │  └─ Better Auth        (/api/auth/*: email, Google, Apple) ─► Resend    │
+     │          │  └─ Better Auth        (/api/auth/*: email, Google, Apple) ─► Gmail/Resend│
      │          └────────────────────────────────────────────────────────────────────────┘
      │          │       │ uploadPhoto (Server Action) ─────────────────────────────────────┼──► Vercel Blob
      └──────────┴───────┘
@@ -113,6 +113,7 @@ users                          sessions                       accounts
                                                               ├─ password     (hash scrypt, solo credential)
 verifications (tokens de email y de contraseña)               └─ access/refresh/id tokens del proveedor
 rate_limits   (contador por IP y ruta de /api/auth)
+action_limits (contador anti-spam: acción + IP cifrada, ventana de 1 h; el cron borra lo de >1 día)
 ```
 
 Al borrar un usuario se borran antes sus publicaciones (con fotos y avistamientos) y después, en cascada, sus sesiones y cuentas.
@@ -154,15 +155,16 @@ Logs estructurados propios (`src/lib/logger`) en JSON hacia stdout/stderr, que V
 
 ### Cuentas
 
-| #   | Decisión                                                             | Alternativas                       | Motivo                                                                                                                                                     |
-| --- | -------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 17  | **Email + contraseña con verificación**, Google y Apple              | Enlace mágico; solo redes sociales | Lo más familiar para cualquiera. La verificación evita cuentas con emails ajenos y permite vincular Google/Apple con seguridad al mismo usuario.           |
-| 18  | **Botones sociales solo si hay credenciales**                        | Flags de configuración aparte      | Apple queda "listo pero oculto" hasta tener la cuenta de desarrollador: basta con añadir sus 4 variables. El client secret de Apple se firma solo (ES256). |
-| 19  | **Resend** para los emails                                           | SMTP propio; Postmark              | API simple, plan gratuito suficiente. Sin clave, en local los enlaces salen en la terminal.                                                                |
-| 20  | **Sesión en BD + cookie de caché (5 min)**                           | JWT sin estado                     | Se pueden revocar (cambio de contraseña, borrado). La cookie firmada evita una consulta por página.                                                        |
-| 21  | **El autor gestiona desde su cuenta**, el enlace secreto se mantiene | Quitar el enlace si hay cuenta     | Quien publica sin cuenta no pierde nada; quien tiene cuenta no depende de guardar el enlace.                                                               |
-| 22  | **Borrar la cuenta borra sus publicaciones**                         | Anonimizarlas                      | Llevan su nombre y su contacto. RGPD: supresión real.                                                                                                      |
-| 23  | **Rate limit de Better Auth en la BD** (`rate_limits`)               | Memoria; Upstash                   | En serverless la memoria no se comparte entre instancias. Sin otro servicio. Login 5/min, registro 5/h, recuperar contraseña 3/h por IP.                   |
+| #   | Decisión                                                             | Alternativas                       | Motivo                                                                                                                                                                                                                           |
+| --- | -------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 17  | **Email + contraseña con verificación**, Google y Apple              | Enlace mágico; solo redes sociales | Lo más familiar para cualquiera. La verificación evita cuentas con emails ajenos y permite vincular Google/Apple con seguridad al mismo usuario.                                                                                 |
+| 18  | **Botones sociales solo si hay credenciales**                        | Flags de configuración aparte      | Apple queda "listo pero oculto" hasta tener la cuenta de desarrollador: basta con añadir sus 4 variables. El client secret de Apple se firma solo (ES256).                                                                       |
+| 19  | **Emails por Gmail (SMTP) o Resend**, lo que esté configurado        | Solo Resend; Postmark              | Gmail con contraseña de aplicación funciona sin dominio propio (≈500/día); Resend, con dominio, escala mejor. El transporte se elige por variables (`emailTransport()`). Sin ninguno, en local los enlaces salen en la terminal. |
+| 20  | **Sesión en BD + cookie de caché (5 min)**                           | JWT sin estado                     | Se pueden revocar (cambio de contraseña, borrado). La cookie firmada evita una consulta por página.                                                                                                                              |
+| 21  | **El autor gestiona desde su cuenta**, el enlace secreto se mantiene | Quitar el enlace si hay cuenta     | Quien publica sin cuenta no pierde nada; quien tiene cuenta no depende de guardar el enlace.                                                                                                                                     |
+| 22  | **Borrar la cuenta borra sus publicaciones**                         | Anonimizarlas                      | Llevan su nombre y su contacto. RGPD: supresión real.                                                                                                                                                                            |
+| 23  | **Rate limit de Better Auth en la BD** (`rate_limits`)               | Memoria; Upstash                   | En serverless la memoria no se comparte entre instancias. Sin otro servicio. Login 5/min, registro 5/h, recuperar contraseña 3/h por IP.                                                                                         |
+| 24  | **Anti-spam propio en Postgres** (`action_limits`) + campo trampa    | Upstash Redis; CAPTCHA             | Sin otro servicio ni cuenta. Una sentencia `insert … on conflict` atómica basta para el volumen local. Sin CAPTCHA: molesta a vecinos con prisa y el campo trampa frena a los bots simples.                                      |
 
 ## Variables de entorno
 

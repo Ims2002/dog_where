@@ -9,6 +9,7 @@ import { PhotoInput, type UploadedPhoto } from "@/components/photo-input";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { Field, Input, Textarea } from "@/components/ui/field";
+import { useHoneypot } from "@/components/ui/honeypot";
 import { NowDateTimeInput, readDateTime } from "@/components/ui/now-datetime-input";
 import type { PublicShelter } from "@/features/shelters/mappers";
 import { toFieldErrors } from "@/lib/action-result";
@@ -61,6 +62,7 @@ export function PublishForm({ shelters }: { shelters: PublicShelter[] }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [created, setCreated] = useState<Created | null>(null);
   const [pending, startTransition] = useTransition();
+  const honeypot = useHoneypot();
 
   if (created) return <Published created={created} withAccount={!!session} />;
 
@@ -92,7 +94,7 @@ export function PublishForm({ shelters }: { shelters: PublicShelter[] }) {
     setFormError(null);
 
     startTransition(async () => {
-      const result = await createPost(check.data);
+      const result = await createPost({ ...check.data, ...honeypot.value() });
       if (result.ok) {
         setCreated(result.data);
         window.scrollTo({ top: 0 });
@@ -104,7 +106,8 @@ export function PublishForm({ shelters }: { shelters: PublicShelter[] }) {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-10">
+    <form onSubmit={submit} noValidate className="relative flex flex-col gap-10">
+      {honeypot.field}
       {session === null && (
         <p className="text-ink-muted -mt-4 text-sm">
           Puedes publicar sin cuenta. Si{" "}

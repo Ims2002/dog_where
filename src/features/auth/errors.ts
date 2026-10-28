@@ -23,6 +23,19 @@ const MESSAGES: Record<string, string> = {
     "Ya tienes una cuenta con ese email. Entra con tu contraseña y vincula el método desde «Mi cuenta».",
   access_denied: "Has cancelado el acceso.",
   email_not_found: "Ese proveedor no nos ha dado tu email. Prueba con otro método.",
+  state_mismatch:
+    "El acceso ha caducado o se abrió en otra pestaña o dirección. Vuelve a intentarlo desde esta página.",
+  state_not_found:
+    "El acceso ha caducado o se abrió en otra pestaña o dirección. Vuelve a intentarlo desde esta página.",
+  please_restart_the_process: "El acceso ha caducado. Vuelve a intentarlo.",
+  invalid_code: "Google no ha confirmado el acceso. Vuelve a intentarlo.",
+  no_code: "Google no ha confirmado el acceso. Vuelve a intentarlo.",
+  unable_to_get_user_info: "No hemos podido leer tu perfil del proveedor. Vuelve a intentarlo.",
+  user_creation_failed: "No hemos podido crear tu cuenta. Inténtalo de nuevo en un momento.",
+  unable_to_link_account:
+    "Ya tienes una cuenta con ese email. Entra con tu contraseña y vincula el método desde «Mi cuenta».",
+  email_not_verified:
+    "Ya hay una cuenta con ese email sin confirmar. Confírmala desde el enlace que te enviamos, o recupera la contraseña.",
 };
 
 const RATE_LIMITED = "Demasiados intentos. Espera unos minutos y vuelve a probar.";
@@ -42,6 +55,7 @@ export function callbackErrorMessage(code: string | undefined): string | null {
   return (
     MESSAGES[code] ??
     MESSAGES[code.toUpperCase()] ??
-    "No se ha podido completar el acceso. Inténtalo de nuevo."
+    // El código ayuda a diagnosticar y no es información sensible.
+    `No se ha podido completar el acceso. Inténtalo de nuevo. (Código: ${code.slice(0, 40)})`
   );
 }

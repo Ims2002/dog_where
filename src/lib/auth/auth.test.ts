@@ -33,6 +33,18 @@ describe("emailPasswordEnabled", () => {
     expect(emailPasswordEnabled({ NODE_ENV: "production" })).toBe(false);
     expect(emailPasswordEnabled({ NODE_ENV: "production", RESEND_API_KEY: "re_x" })).toBe(true);
     expect(emailPasswordEnabled({ NODE_ENV: "development" })).toBe(true);
+    expect(
+      emailPasswordEnabled({
+        NODE_ENV: "production",
+        SMTP_HOST: "smtp.gmail.com",
+        SMTP_USER: "a@gmail.com",
+        SMTP_PASS: "x",
+      }),
+    ).toBe(true);
+    // SMTP a medias no cuenta
+    expect(emailPasswordEnabled({ NODE_ENV: "production", SMTP_HOST: "smtp.gmail.com" })).toBe(
+      false,
+    );
   });
 });
 

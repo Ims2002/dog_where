@@ -112,6 +112,16 @@ export const rateLimits = pgTable("rate_limits", {
   lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 }).enableRLS();
 
+/**
+ * Límite de envíos de la app (publicar, avistamientos, denuncias, fotos) por IP.
+ * La clave lleva la IP cifrada (HMAC), nunca en claro. Las filas viejas las borra el cron.
+ */
+export const actionLimits = pgTable("action_limits", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  count: integer("count").notNull(),
+}).enableRLS();
+
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })

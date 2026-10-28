@@ -4,6 +4,8 @@
  *
  *   npm run db:status
  */
+import { readdirSync } from "node:fs";
+
 import { loadEnvConfig } from "@next/env";
 import { Pool } from "pg";
 
@@ -13,6 +15,7 @@ loadEnvConfig(process.cwd());
 
 const EXPECTED = [
   "accounts",
+  "action_limits",
   "posts",
   "rate_limits",
   "reports",
@@ -33,9 +36,22 @@ async function main() {
   if (!url)
     throw new Error("No hay POSTGRES_URL_NON_POOLING, DATABASE_URL ni POSTGRES_URL en .env.local");
 
-  const parsed = new URL(url);
   // El usuario de Supabase lleva el id del proyecto (postgres.<id>): sirve para comparar.
-  process.stdout.write(`Base de datos: ${parsed.username}@${parsed.hostname} (${name})\n\n`);
+  const describe = (value: string) => {
+    const u = new URL(value);
+    return { user: u.username, host: u.hostname, label: `${u.username}@${u.hostname}` };
+  };
+  process.stdout.write(`Migraciones (${name}): ${describe(url).label}\n`);
+  const appUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+  if (appUrl) {
+    process.stdout.write(`App (POSTGRES_URL):       ${describe(appUrl).label}\n`);
+    if (describe(appUrl).user !== describe(url).user) {
+      process.stdout.write(
+        "\n⚠ La app y las migraciones apuntan a proyectos distintos. Revisa las variables en Vercel.\n",
+      );
+    }
+  }
+  process.stdout.write("\n");
 
   const pool = new Pool({ ...pgConfigFromUrl(url), max: 1 });
   try {
@@ -43,7 +59,9 @@ async function main() {
       .query<{ n: string }>("select count(*)::text as n from drizzle.__drizzle_migrations")
       .then((r) => Number(r.rows[0].n))
       .catch(() => 0);
-    process.stdout.write(`Migraciones aplicadas: ${migrations} de 4\n`);
+    process.stdout.write(
+      `Migraciones aplicadas: ${migrations} de ${readdirSync("drizzle").filter((f) => f.endsWith(".sql")).length}\n`,
+    );
 
     const { rows } = await pool.query<{ table_name: string }>(
       "select table_name from information_schema.tables where table_schema = 'public'",

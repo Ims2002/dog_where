@@ -3,6 +3,7 @@ import { connection } from "next/server";
 
 import { POSTS_TAG } from "@/features/posts/constants";
 import { archiveExpiredPosts } from "@/features/posts/expire";
+import { purgeRateLimits } from "@/lib/anti-spam";
 import { env } from "@/lib/env";
 import { createLogger, withLogContext } from "@/lib/logger";
 import { currentRequestId } from "@/lib/logger/action";
@@ -23,6 +24,14 @@ export async function GET(request: Request) {
 
     const result = await log.time("cron.expire", () => archiveExpiredPosts());
     if (result.archived > 0) revalidateTag(POSTS_TAG, "max");
-    return Response.json(result);
+
+    // Contadores anti-spam de más de un día: ya no sirven.
+    const rateLimitsPurged = await purgeRateLimits().catch((error: unknown) => {
+      log.error("rate_limit.purge_failed", {}, error);
+      return 0;
+    });
+    log.info("rate_limit.purged", { count: rateLimitsPurged });
+
+    return Response.json({ ...result, rateLimitsPurged });
   });
 }

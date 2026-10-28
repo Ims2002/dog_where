@@ -6,6 +6,8 @@ import { z } from "zod";
 
 import { findApprovedShelter } from "@/features/shelters/queries";
 import { fail, failValidation, ok, type ActionResult } from "@/lib/action-result";
+import { guardAction } from "@/lib/anti-spam";
+import type { HoneypotInput } from "@/lib/anti-spam/limits";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getDb } from "@/lib/db";
 import { createLogger } from "@/lib/logger";
@@ -40,6 +42,8 @@ export async function uploadPhoto(
   formData: FormData,
 ): Promise<ActionResult<{ url: string; pathname: string }>> {
   return runAction("photo.upload", async () => {
+    const blocked = await guardAction("photo.upload");
+    if (blocked) return blocked;
     const file = formData.get("file");
     const folder = photoFolderSchema.safeParse(formData.get("folder"));
     if (!(file instanceof File) || !folder.success) return fail("No se ha recibido ninguna foto.");
@@ -66,9 +70,11 @@ export async function uploadPhoto(
 /* ------------------------------------------------------------- publicar */
 
 export async function createPost(
-  input: CreatePostInput,
+  input: CreatePostInput & HoneypotInput,
 ): Promise<ActionResult<{ id: string; manageToken: string }>> {
   return runAction("post.create", async () => {
+    const blocked = await guardAction("post.create", input);
+    if (blocked) return blocked;
     const parsed = validateCreatePost(input);
     if (!parsed.success) return failValidation(parsed.error);
     const d = parsed.data;
@@ -220,6 +226,8 @@ const reportSchema = z.object({
 
 export async function reportPost(input: unknown): Promise<ActionResult> {
   return runAction("report.create", async () => {
+    const blocked = await guardAction("report.create", input);
+    if (blocked) return blocked;
     const parsed = reportSchema.safeParse(input);
     if (!parsed.success) return failValidation(parsed.error);
     const d = parsed.data;

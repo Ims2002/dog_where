@@ -2,6 +2,8 @@
  * Qué métodos de acceso están activos. Un proveedor social solo se activa (y su botón
  * solo aparece) si sus credenciales están en las variables de entorno.
  */
+import { emailTransport } from "@/lib/email/transport";
+
 export const SOCIAL_PROVIDERS = ["google", "apple"] as const;
 export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number];
 
@@ -24,10 +26,10 @@ export function appleCredentials(e: Env = process.env) {
 
 /**
  * Email + contraseña necesita poder enviar emails (verificación y recuperación).
- * En producción sin RESEND_API_KEY se oculta; en local los enlaces salen en la terminal.
+ * En producción se oculta si no hay Resend ni SMTP; en local los enlaces salen en la terminal.
  */
 export function emailPasswordEnabled(e: Env = process.env): boolean {
-  return !!e.RESEND_API_KEY || e.NODE_ENV !== "production";
+  return emailTransport(e) !== null || e.NODE_ENV !== "production";
 }
 
 export function enabledSocialProviders(e: Env = process.env): SocialProvider[] {
