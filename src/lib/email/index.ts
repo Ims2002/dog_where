@@ -12,7 +12,7 @@ const log = createLogger("email");
 let resend: Resend | undefined;
 
 /** Plantilla de email (sirve para el evento y los logs, nunca se registra el destinatario). */
-export type EmailKind = "verify_email" | "reset_password" | "existing_account";
+export type EmailKind = "verify_email" | "reset_password";
 
 /**
  * Envía un email transaccional por Resend o SMTP (ver transport.ts). Sin ninguno, en

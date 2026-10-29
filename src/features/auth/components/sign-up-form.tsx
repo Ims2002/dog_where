@@ -151,7 +151,16 @@ function CheckYourEmail({ email, next }: { email: string; next: string }) {
         confirmar tu email y entrarás directamente.
       </p>
       <p className="text-ink-muted text-sm">
-        Si no te llega en un par de minutos, mira en la carpeta de spam.
+        Si no te llega en un par de minutos, mira en la carpeta de spam. Si ya tenías una cuenta con
+        este email, no te enviaremos nada:{" "}
+        <Link href="/entrar" className="font-semibold underline underline-offset-4">
+          entra
+        </Link>{" "}
+        o{" "}
+        <Link href="/recuperar" className="font-semibold underline underline-offset-4">
+          recupera tu contraseña
+        </Link>
+        .
       </p>
       {state === "sent" && <FormAlert tone="success">Te lo hemos vuelto a enviar.</FormAlert>}
       {state === "error" && (

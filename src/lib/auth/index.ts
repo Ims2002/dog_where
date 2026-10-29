@@ -84,14 +84,9 @@ function createAuth() {
       onPasswordReset: async ({ user }) => {
         log.info("auth.password_reset", { userId: user.id });
       },
-      // Registro con un email que ya existe: se avisa al dueño en lugar de revelarlo.
-      onExistingUserSignUp: async ({ user }) => {
-        await sendEmail(
-          "existing_account",
-          user.email,
-          emails.existingAccount(user.name, `${baseURL}/entrar`),
-        );
-      },
+      // Registro con un email que ya existe: Better Auth responde igual que si fuera nuevo
+      // (no revela qué emails están registrados) y no enviamos nada. Si la cuenta está sin
+      // confirmar, «Reenviar el enlace» manda uno nuevo.
     },
     emailVerification: {
       sendOnSignUp: true,
@@ -135,11 +130,12 @@ function createAuth() {
       window: 60,
       max: 60,
       customRules: {
-        "/sign-in/email": { window: 60, max: 5 },
-        "/sign-up/email": { window: HOUR, max: 5 },
-        "/request-password-reset": { window: HOUR, max: 3 },
-        "/send-verification-email": { window: HOUR, max: 3 },
-        "/delete-user": { window: HOUR, max: 5 },
+        // Por IP. Suficiente para alguien que se equivoca varias veces; corta a un script.
+        "/sign-in/email": { window: 5 * 60, max: 15 },
+        "/sign-up/email": { window: HOUR, max: 15 },
+        "/request-password-reset": { window: HOUR, max: 8 },
+        "/send-verification-email": { window: HOUR, max: 8 },
+        "/delete-user": { window: HOUR, max: 10 },
       },
     },
     advanced: {

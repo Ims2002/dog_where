@@ -51,18 +51,3 @@ export function resetPassword(name: string, url: string): EmailContent {
     }),
   };
 }
-
-export function existingAccount(name: string, url: string): EmailContent {
-  return {
-    subject: "Ya tienes una cuenta en DogWhere",
-    ...layout({
-      title: `Hola, ${name}`,
-      intro:
-        "Alguien ha intentado registrarse con tu email, pero ya tienes una cuenta. Puedes entrar con tu contraseña o con Google/Apple si los usaste.",
-      cta: "Entrar en DogWhere",
-      url,
-      outro:
-        "Si no recuerdas la contraseña, usa «¿Has olvidado tu contraseña?». Si no has sido tú, ignora este mensaje.",
-    }),
-  };
-}
