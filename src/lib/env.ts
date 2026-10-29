@@ -41,16 +41,41 @@ export const env = {
   // Los emails (Resend o SMTP) se configuran en src/lib/email/transport.ts.
 };
 
+type Env = Record<string, string | undefined>;
+
+const withoutSlash = (url: string) => url.replace(/\/+$/, "");
+const https = (host: string | undefined) => (host ? `https://${withoutSlash(host)}` : undefined);
+
 /**
  * URL base de la app para Better Auth (callbacks de OAuth, enlaces de los emails).
- * Producción: BETTER_AUTH_URL o NEXT_PUBLIC_SITE_URL. Previews: la URL del despliegue.
+ * 1. BETTER_AUTH_URL si está.
+ * 2. En Vercel, la URL real del despliegue: la de producción (su dominio principal) o la
+ *    de la preview. Así no depende de que NEXT_PUBLIC_SITE_URL esté bien escrita.
+ * 3. NEXT_PUBLIC_SITE_URL, y si no, localhost.
  */
-export function authBaseUrl(): string {
-  if (process.env.BETTER_AUTH_URL) return process.env.BETTER_AUTH_URL;
-  if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+export function authBaseUrl(e: Env = process.env): string {
+  if (e.BETTER_AUTH_URL) return withoutSlash(e.BETTER_AUTH_URL);
+  if (e.VERCEL_ENV === "production" && e.VERCEL_PROJECT_PRODUCTION_URL) {
+    return https(e.VERCEL_PROJECT_PRODUCTION_URL)!;
   }
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  if (e.VERCEL_ENV === "preview" && e.VERCEL_URL) return https(e.VERCEL_URL)!;
+  return withoutSlash(e.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+}
+
+/**
+ * Orígenes desde los que se aceptan peticiones de login/registro: la URL base, la de
+ * producción, la del despliegue concreto y la de la rama (Vercel da varias por despliegue).
+ */
+export function authTrustedOrigins(e: Env = process.env): string[] {
+  const origins = [
+    authBaseUrl(e),
+    e.NEXT_PUBLIC_SITE_URL && withoutSlash(e.NEXT_PUBLIC_SITE_URL),
+    https(e.VERCEL_PROJECT_PRODUCTION_URL),
+    https(e.VERCEL_URL),
+    https(e.VERCEL_BRANCH_URL),
+    "https://appleid.apple.com", // Apple devuelve el login con un POST desde su dominio
+  ];
+  return [...new Set(origins.filter((o): o is string => !!o))];
 }
 
 export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";

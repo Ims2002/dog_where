@@ -9,7 +9,7 @@ import { getDb } from "@/lib/db";
 import { accounts, rateLimits, sessions, users, verifications } from "@/lib/db/schema";
 import { sendEmail } from "@/lib/email";
 import * as emails from "@/lib/email/templates";
-import { authBaseUrl, env } from "@/lib/env";
+import { authBaseUrl, authTrustedOrigins, env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 
 import { createAppleClientSecret } from "./apple-secret";
@@ -107,8 +107,7 @@ function createAuth() {
     },
 
     socialProviders: socialProviders(),
-    // Apple devuelve el login con un POST desde su dominio.
-    trustedOrigins: ["https://appleid.apple.com"],
+    trustedOrigins: authTrustedOrigins(),
     account: {
       accountLinking: { enabled: true, trustedProviders: ["google", "apple"] },
     },
